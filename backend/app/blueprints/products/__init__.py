@@ -1,0 +1,9 @@
+"""
+Products blueprint.
+Handles product comparison, switching, and management.
+"""
+from flask import Blueprint
+
+products_bp = Blueprint('products', __name__)
+
+from app.blueprints.products import routes

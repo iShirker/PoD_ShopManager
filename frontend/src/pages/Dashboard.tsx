@@ -71,31 +71,13 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Welcome back, {user.first_name || user.username || 'User'}!
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Here's an overview of your print on demand business
-          </p>
-        </div>
-        <div className="flex space-x-3">
-          <button
-            onClick={() => openShopLoginModal('etsy')}
-            className="btn-secondary flex items-center"
-          >
-            <EtsySimpleIcon className="w-5 h-5 mr-2 text-[#F1641E]" />
-            Connect Etsy Shop
-          </button>
-          <button
-            onClick={() => openShopLoginModal('shopify')}
-            className="btn-secondary flex items-center"
-          >
-            <ShopifySimpleIcon className="w-5 h-5 mr-2 text-[#95BF47]" />
-            Connect Shopify Shop
-          </button>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Welcome back, {user.first_name || user.username || 'User'}!
+        </h1>
+        <p className="text-gray-500 mt-1">
+          Here's an overview of your print on demand business
+        </p>
       </div>
 
       {/* Stats cards */}
@@ -242,8 +224,9 @@ export default function Dashboard() {
               <div className="flex justify-center py-4">
                 <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
               </div>
-            ) : shops?.data?.shops?.length > 0 ? (
+            ) : (
               <div className="space-y-3">
+                {/* Connected shops list */}
                 {shops?.data?.shops?.slice(0, 5).map((shop: any) => (
                   <Link
                     key={shop.id}
@@ -266,25 +249,30 @@ export default function Dashboard() {
                     </div>
                   </Link>
                 ))}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <Store className="w-12 h-12 mx-auto text-gray-300" />
-                <p className="mt-2 text-gray-500">No shops connected yet</p>
-                <div className="mt-4 flex justify-center space-x-3">
+
+                {/* Empty state message */}
+                {(!shops?.data?.shops || shops.data.shops.length === 0) && (
+                  <div className="text-center py-4">
+                    <Store className="w-10 h-10 mx-auto text-gray-300" />
+                    <p className="mt-2 text-sm text-gray-500">No shops connected yet</p>
+                  </div>
+                )}
+
+                {/* Connect shop buttons - always visible */}
+                <div className="flex flex-wrap gap-2 pt-2">
                   <button
                     onClick={() => openShopLoginModal('etsy')}
-                    className="btn-secondary text-sm flex items-center"
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-orange-100 text-orange-700 hover:bg-orange-200 flex items-center"
                   >
-                    <EtsySimpleIcon className="w-4 h-4 mr-1 text-[#F1641E]" />
-                    Etsy
+                    <EtsySimpleIcon className="w-4 h-4 mr-1" />
+                    + Connect Etsy
                   </button>
                   <button
                     onClick={() => openShopLoginModal('shopify')}
-                    className="btn-secondary text-sm flex items-center"
+                    className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-green-100 text-green-700 hover:bg-green-200 flex items-center"
                   >
-                    <ShopifySimpleIcon className="w-4 h-4 mr-1 text-[#95BF47]" />
-                    Shopify
+                    <ShopifySimpleIcon className="w-4 h-4 mr-1" />
+                    + Connect Shopify
                   </button>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 """
 Supplier connection routes.
 Handles connecting, managing, and syncing POD suppliers.
+Supports multiple accounts per supplier type.
 """
 from datetime import datetime
 from flask import request, jsonify
@@ -23,7 +24,7 @@ def list_suppliers():
     List all supplier connections for current user.
 
     Returns:
-        List of supplier connections
+        List of supplier connections grouped by type
     """
     user_id = get_jwt_identity()
     connections = SupplierConnection.query.filter_by(user_id=user_id).all()
@@ -35,28 +36,52 @@ def list_suppliers():
 
 @suppliers_bp.route('/<supplier_type>', methods=['GET'])
 @jwt_required()
-def get_supplier(supplier_type):
+def get_supplier_connections(supplier_type):
     """
-    Get specific supplier connection.
+    Get all connections for a specific supplier type.
 
     Args:
         supplier_type: Type of supplier (gelato, printify, printful)
 
     Returns:
-        Supplier connection details
+        List of supplier connections for this type
     """
     user_id = get_jwt_identity()
 
     if supplier_type not in [s.value for s in SupplierType]:
         return jsonify({'error': 'Invalid supplier type'}), 400
 
-    connection = SupplierConnection.query.filter_by(
+    connections = SupplierConnection.query.filter_by(
         user_id=user_id,
         supplier_type=supplier_type
+    ).all()
+
+    return jsonify({
+        'connections': [c.to_dict(include_tokens=True) for c in connections]
+    })
+
+
+@suppliers_bp.route('/connection/<int:connection_id>', methods=['GET'])
+@jwt_required()
+def get_connection(connection_id):
+    """
+    Get a specific supplier connection by ID.
+
+    Args:
+        connection_id: Connection ID
+
+    Returns:
+        Supplier connection details
+    """
+    user_id = get_jwt_identity()
+
+    connection = SupplierConnection.query.filter_by(
+        id=connection_id,
+        user_id=user_id
     ).first()
 
     if not connection:
-        return jsonify({'error': 'Supplier not connected'}), 404
+        return jsonify({'error': 'Connection not found'}), 404
 
     return jsonify(connection.to_dict(include_tokens=True))
 
@@ -66,6 +91,7 @@ def get_supplier(supplier_type):
 def connect_supplier(supplier_type):
     """
     Connect a POD supplier using API credentials.
+    Creates a new connection (allows multiple accounts per supplier).
 
     Args:
         supplier_type: Type of supplier (gelato, printify, printful)
@@ -73,6 +99,7 @@ def connect_supplier(supplier_type):
     Request body:
         api_key: API key or token
         shop_id: Optional shop/store ID (required for Printify)
+        account_name: Optional display name for this account
 
     Returns:
         Connection status and details
@@ -88,6 +115,7 @@ def connect_supplier(supplier_type):
 
     api_key = data.get('api_key', '').strip()
     shop_id = data.get('shop_id', '').strip()
+    account_name = data.get('account_name', '').strip()
 
     if not api_key:
         return jsonify({'error': 'API key is required'}), 400
@@ -124,18 +152,25 @@ def connect_supplier(supplier_type):
     except Exception as e:
         return jsonify({'error': f'Connection failed: {str(e)}'}), 500
 
-    # Create or update connection
-    connection = SupplierConnection.query.filter_by(
+    # Check if this exact API key already exists for this user
+    existing = SupplierConnection.query.filter_by(
         user_id=user_id,
-        supplier_type=supplier_type
+        supplier_type=supplier_type,
+        api_key=api_key
     ).first()
 
-    if not connection:
-        connection = SupplierConnection(
-            user_id=user_id,
-            supplier_type=supplier_type
-        )
-        db.session.add(connection)
+    if existing:
+        return jsonify({
+            'error': 'This account is already connected',
+            'connection': existing.to_dict(include_tokens=True)
+        }), 409
+
+    # Create new connection
+    connection = SupplierConnection(
+        user_id=user_id,
+        supplier_type=supplier_type
+    )
+    db.session.add(connection)
 
     connection.api_key = api_key
     connection.shop_id = shop_id if supplier_type == SupplierType.PRINTIFY.value else None
@@ -143,7 +178,11 @@ def connect_supplier(supplier_type):
     connection.is_connected = True
     connection.is_active = True
     connection.connection_error = None
-    connection.updated_at = datetime.utcnow()
+
+    # Set account info from validation result or user input
+    connection.account_name = account_name or result.get('account_name') or result.get('email') or f"Account {supplier_type}"
+    connection.account_email = result.get('email')
+    connection.account_id = result.get('account_id') or result.get('user_id')
 
     db.session.commit()
 
@@ -153,69 +192,129 @@ def connect_supplier(supplier_type):
     }), 201
 
 
-@suppliers_bp.route('/<supplier_type>/disconnect', methods=['POST'])
+@suppliers_bp.route('/connection/<int:connection_id>/disconnect', methods=['POST'])
 @jwt_required()
-def disconnect_supplier(supplier_type):
+def disconnect_connection(connection_id):
     """
-    Disconnect a POD supplier.
+    Disconnect (delete) a supplier connection.
 
     Args:
-        supplier_type: Type of supplier (gelato, printify, printful)
+        connection_id: Connection ID
 
     Returns:
         Success message
     """
     user_id = get_jwt_identity()
 
-    if supplier_type not in [s.value for s in SupplierType]:
-        return jsonify({'error': 'Invalid supplier type'}), 400
-
     connection = SupplierConnection.query.filter_by(
-        user_id=user_id,
-        supplier_type=supplier_type
+        id=connection_id,
+        user_id=user_id
     ).first()
 
     if not connection:
-        return jsonify({'error': 'Supplier not connected'}), 404
+        return jsonify({'error': 'Connection not found'}), 404
 
-    # Clear credentials but keep the record
-    connection.api_key = None
-    connection.api_secret = None
-    connection.access_token = None
-    connection.refresh_token = None
-    connection.is_connected = False
-    connection.connection_error = None
+    supplier_type = connection.supplier_type
+    account_name = connection.account_name or supplier_type
 
+    # Delete the connection entirely
+    db.session.delete(connection)
     db.session.commit()
 
-    return jsonify({'message': f'{supplier_type.capitalize()} disconnected successfully'})
+    return jsonify({
+        'message': f'{account_name} disconnected successfully'
+    })
 
 
-@suppliers_bp.route('/<supplier_type>/sync', methods=['POST'])
+@suppliers_bp.route('/connection/<int:connection_id>/activate', methods=['POST'])
 @jwt_required()
-def sync_supplier(supplier_type):
+def activate_connection(connection_id):
     """
-    Sync products from a POD supplier.
+    Activate a supplier connection.
 
     Args:
-        supplier_type: Type of supplier (gelato, printify, printful)
+        connection_id: Connection ID
+
+    Returns:
+        Updated connection
+    """
+    user_id = get_jwt_identity()
+
+    connection = SupplierConnection.query.filter_by(
+        id=connection_id,
+        user_id=user_id
+    ).first()
+
+    if not connection:
+        return jsonify({'error': 'Connection not found'}), 404
+
+    connection.is_active = True
+    connection.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({
+        'message': f'{connection.account_name or connection.supplier_type} activated',
+        'connection': connection.to_dict(include_tokens=True)
+    })
+
+
+@suppliers_bp.route('/connection/<int:connection_id>/deactivate', methods=['POST'])
+@jwt_required()
+def deactivate_connection(connection_id):
+    """
+    Deactivate a supplier connection.
+
+    Args:
+        connection_id: Connection ID
+
+    Returns:
+        Updated connection
+    """
+    user_id = get_jwt_identity()
+
+    connection = SupplierConnection.query.filter_by(
+        id=connection_id,
+        user_id=user_id
+    ).first()
+
+    if not connection:
+        return jsonify({'error': 'Connection not found'}), 404
+
+    connection.is_active = False
+    connection.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({
+        'message': f'{connection.account_name or connection.supplier_type} deactivated',
+        'connection': connection.to_dict(include_tokens=True)
+    })
+
+
+@suppliers_bp.route('/connection/<int:connection_id>/sync', methods=['POST'])
+@jwt_required()
+def sync_connection(connection_id):
+    """
+    Sync products from a supplier connection.
+
+    Args:
+        connection_id: Connection ID
 
     Returns:
         Sync status and product count
     """
     user_id = get_jwt_identity()
 
-    if supplier_type not in [s.value for s in SupplierType]:
-        return jsonify({'error': 'Invalid supplier type'}), 400
-
     connection = SupplierConnection.query.filter_by(
+        id=connection_id,
         user_id=user_id,
-        supplier_type=supplier_type,
         is_connected=True
     ).first()
 
     if not connection:
-        return jsonify({'error': 'Supplier not connected'}), 404
+        return jsonify({'error': 'Connection not found'}), 404
+
+    if not connection.is_active:
+        return jsonify({'error': 'Connection is deactivated'}), 400
 
     try:
         result = sync_supplier_products(connection)
@@ -236,14 +335,14 @@ def sync_supplier(supplier_type):
         return jsonify({'error': f'Sync failed: {str(e)}'}), 500
 
 
-@suppliers_bp.route('/<supplier_type>/products', methods=['GET'])
+@suppliers_bp.route('/connection/<int:connection_id>/products', methods=['GET'])
 @jwt_required()
-def get_supplier_products(supplier_type):
+def get_connection_products(connection_id):
     """
-    Get products available from a supplier.
+    Get products from a specific connection.
 
     Args:
-        supplier_type: Type of supplier (gelato, printify, printful)
+        connection_id: Connection ID
 
     Query params:
         page: Page number (default 1)
@@ -256,17 +355,14 @@ def get_supplier_products(supplier_type):
     """
     user_id = get_jwt_identity()
 
-    if supplier_type not in [s.value for s in SupplierType]:
-        return jsonify({'error': 'Invalid supplier type'}), 400
-
     connection = SupplierConnection.query.filter_by(
+        id=connection_id,
         user_id=user_id,
-        supplier_type=supplier_type,
         is_connected=True
     ).first()
 
     if not connection:
-        return jsonify({'error': 'Supplier not connected'}), 404
+        return jsonify({'error': 'Connection not found'}), 404
 
     # Pagination
     page = request.args.get('page', 1, type=int)
@@ -306,36 +402,169 @@ def get_supplier_products(supplier_type):
     })
 
 
-@suppliers_bp.route('/<supplier_type>/products/<product_id>', methods=['GET'])
+# Legacy routes for backwards compatibility
+@suppliers_bp.route('/<supplier_type>/disconnect', methods=['POST'])
 @jwt_required()
-def get_supplier_product(supplier_type, product_id):
+def disconnect_supplier(supplier_type):
     """
-    Get specific supplier product details.
-
-    Args:
-        supplier_type: Type of supplier
-        product_id: Product ID
-
-    Returns:
-        Product details with pricing and variants
+    Disconnect all connections for a supplier type.
+    Legacy endpoint - prefer using /connection/<id>/disconnect
     """
     user_id = get_jwt_identity()
 
     if supplier_type not in [s.value for s in SupplierType]:
         return jsonify({'error': 'Invalid supplier type'}), 400
 
-    connection = SupplierConnection.query.filter_by(
+    connections = SupplierConnection.query.filter_by(
+        user_id=user_id,
+        supplier_type=supplier_type
+    ).all()
+
+    if not connections:
+        return jsonify({'error': 'Supplier not connected'}), 404
+
+    for connection in connections:
+        db.session.delete(connection)
+
+    db.session.commit()
+
+    return jsonify({'message': f'{supplier_type.capitalize()} disconnected successfully'})
+
+
+@suppliers_bp.route('/<supplier_type>/sync', methods=['POST'])
+@jwt_required()
+def sync_supplier(supplier_type):
+    """
+    Sync products from all active connections of a supplier type.
+    Legacy endpoint - prefer using /connection/<id>/sync
+    """
+    user_id = get_jwt_identity()
+
+    if supplier_type not in [s.value for s in SupplierType]:
+        return jsonify({'error': 'Invalid supplier type'}), 400
+
+    connections = SupplierConnection.query.filter_by(
+        user_id=user_id,
+        supplier_type=supplier_type,
+        is_connected=True,
+        is_active=True
+    ).all()
+
+    if not connections:
+        return jsonify({'error': 'No active connections for this supplier'}), 404
+
+    total_synced = 0
+    errors = []
+
+    for connection in connections:
+        try:
+            result = sync_supplier_products(connection)
+            connection.last_sync = datetime.utcnow()
+            connection.connection_error = None
+            total_synced += result.get('count', 0)
+        except Exception as e:
+            connection.connection_error = str(e)
+            errors.append(f"{connection.account_name}: {str(e)}")
+
+    db.session.commit()
+
+    response = {
+        'message': 'Sync completed',
+        'products_synced': total_synced,
+    }
+
+    if errors:
+        response['errors'] = errors
+
+    return jsonify(response)
+
+
+@suppliers_bp.route('/<supplier_type>/products', methods=['GET'])
+@jwt_required()
+def get_supplier_products(supplier_type):
+    """
+    Get products from all connections of a supplier type.
+    Legacy endpoint - prefer using /connection/<id>/products
+    """
+    user_id = get_jwt_identity()
+
+    if supplier_type not in [s.value for s in SupplierType]:
+        return jsonify({'error': 'Invalid supplier type'}), 400
+
+    connections = SupplierConnection.query.filter_by(
         user_id=user_id,
         supplier_type=supplier_type,
         is_connected=True
-    ).first()
+    ).all()
 
-    if not connection:
+    if not connections:
         return jsonify({'error': 'Supplier not connected'}), 404
 
-    product = SupplierProduct.query.filter_by(
-        supplier_connection_id=connection.id,
-        id=product_id
+    connection_ids = [c.id for c in connections]
+
+    # Pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    search = request.args.get('search', '')
+    category = request.args.get('category', '')
+
+    query = SupplierProduct.query.filter(
+        SupplierProduct.supplier_connection_id.in_(connection_ids),
+        SupplierProduct.is_active == True
+    )
+
+    if search:
+        query = query.filter(
+            db.or_(
+                SupplierProduct.name.ilike(f'%{search}%'),
+                SupplierProduct.product_type.ilike(f'%{search}%'),
+                SupplierProduct.brand.ilike(f'%{search}%')
+            )
+        )
+
+    if category:
+        query = query.filter(SupplierProduct.category == category)
+
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    return jsonify({
+        'products': [p.to_dict() for p in pagination.items],
+        'pagination': {
+            'page': page,
+            'per_page': per_page,
+            'total': pagination.total,
+            'pages': pagination.pages,
+            'has_next': pagination.has_next,
+            'has_prev': pagination.has_prev
+        }
+    })
+
+
+@suppliers_bp.route('/<supplier_type>/products/<product_id>', methods=['GET'])
+@jwt_required()
+def get_supplier_product(supplier_type, product_id):
+    """
+    Get specific supplier product details.
+    """
+    user_id = get_jwt_identity()
+
+    if supplier_type not in [s.value for s in SupplierType]:
+        return jsonify({'error': 'Invalid supplier type'}), 400
+
+    connections = SupplierConnection.query.filter_by(
+        user_id=user_id,
+        supplier_type=supplier_type,
+        is_connected=True
+    ).all()
+
+    if not connections:
+        return jsonify({'error': 'Supplier not connected'}), 404
+
+    connection_ids = [c.id for c in connections]
+
+    product = SupplierProduct.query.filter(
+        SupplierProduct.supplier_connection_id.in_(connection_ids),
+        SupplierProduct.id == product_id
     ).first()
 
     if not product:
@@ -351,21 +580,31 @@ def get_all_supplier_status():
     Get connection status for all supported suppliers.
 
     Returns:
-        Status of each supplier type
+        Status of each supplier type with connection counts
     """
     user_id = get_jwt_identity()
 
     connections = SupplierConnection.query.filter_by(user_id=user_id).all()
-    connection_map = {c.supplier_type: c for c in connections}
+
+    # Group connections by supplier type
+    by_type = {}
+    for conn in connections:
+        if conn.supplier_type not in by_type:
+            by_type[conn.supplier_type] = []
+        by_type[conn.supplier_type].append(conn)
 
     status = {}
     for supplier in SupplierType:
-        conn = connection_map.get(supplier.value)
+        conns = by_type.get(supplier.value, [])
+        active_conns = [c for c in conns if c.is_connected and c.is_active]
         status[supplier.value] = {
-            'is_connected': conn.is_connected if conn else False,
-            'last_sync': conn.last_sync.isoformat() if conn and conn.last_sync else None,
-            'has_error': bool(conn.connection_error) if conn else False,
-            'error': conn.connection_error if conn else None
+            'is_connected': len(active_conns) > 0,
+            'connection_count': len(conns),
+            'active_count': len(active_conns),
+            'last_sync': max((c.last_sync for c in conns if c.last_sync), default=None),
+            'has_error': any(c.connection_error for c in conns),
         }
+        if status[supplier.value]['last_sync']:
+            status[supplier.value]['last_sync'] = status[supplier.value]['last_sync'].isoformat()
 
     return jsonify({'suppliers': status})

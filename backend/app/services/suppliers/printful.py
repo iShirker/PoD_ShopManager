@@ -188,7 +188,8 @@ def validate_printful_connection(api_key):
         return True, {
             'store': store,
             'store_id': store.get('id'),
-            'store_name': store.get('name')
+            'store_name': store.get('name'),
+            'account_name': store.get('name') or f"Printful ({api_key[-8:]})",
         }
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 401:

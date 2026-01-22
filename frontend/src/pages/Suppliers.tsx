@@ -5,7 +5,8 @@ import { suppliersApi } from '../lib/api'
 import { getSupplierName } from '../lib/utils'
 import { cn } from '../lib/utils'
 import {
-  Truck, Plus, Loader2, RefreshCw, ExternalLink, MoreVertical, Trash2
+  Truck, Plus, Loader2, RefreshCw, ExternalLink, MoreVertical, Trash2,
+  Power, PowerOff, User
 } from 'lucide-react'
 import SupplierLoginModal from '../components/SupplierLoginModal'
 
@@ -28,7 +29,7 @@ const AVAILABLE_SUPPLIERS = [
     color: 'bg-green-100 text-green-600',
     bgColor: 'bg-green-50',
     borderColor: 'border-green-200',
-    authType: 'oauth' as const,
+    authType: 'api_key' as const,
   },
   {
     id: 'printful',
@@ -38,27 +39,47 @@ const AVAILABLE_SUPPLIERS = [
     color: 'bg-blue-100 text-blue-600',
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-200',
-    authType: 'oauth' as const,
+    authType: 'api_key' as const,
   },
 ]
+
+interface SupplierConnection {
+  id: number
+  supplier_type: string
+  account_name: string | null
+  account_email: string | null
+  is_active: boolean
+  is_connected: boolean
+  last_sync: string | null
+  connection_error: string | null
+}
 
 export default function Suppliers() {
   const queryClient = useQueryClient()
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [selectedSupplier, setSelectedSupplier] = useState<'printify' | 'printful' | 'gelato' | null>(null)
-  const [openMenu, setOpenMenu] = useState<string | null>(null)
+  const [openMenu, setOpenMenu] = useState<number | null>(null)
 
   const { data: suppliers, isLoading } = useQuery({
     queryKey: ['suppliers'],
     queryFn: () => suppliersApi.list(),
   })
 
-  const connectedSuppliers = suppliers?.data?.suppliers?.filter((s: any) => s.is_connected) || []
+  const connections: SupplierConnection[] = suppliers?.data?.suppliers || []
+
+  // Group connections by supplier type
+  const connectionsByType: Record<string, SupplierConnection[]> = {}
+  connections.forEach((conn) => {
+    if (!connectionsByType[conn.supplier_type]) {
+      connectionsByType[conn.supplier_type] = []
+    }
+    connectionsByType[conn.supplier_type].push(conn)
+  })
 
   const disconnectMutation = useMutation({
-    mutationFn: (supplier: string) => suppliersApi.disconnect(supplier),
-    onSuccess: (_, supplier) => {
-      toast.success(`${getSupplierName(supplier)} disconnected`)
+    mutationFn: (connectionId: number) => suppliersApi.disconnectConnection(connectionId),
+    onSuccess: () => {
+      toast.success('Account disconnected')
       queryClient.invalidateQueries({ queryKey: ['suppliers'] })
       setOpenMenu(null)
     },
@@ -67,10 +88,32 @@ export default function Suppliers() {
     },
   })
 
+  const activateMutation = useMutation({
+    mutationFn: (connectionId: number) => suppliersApi.activateConnection(connectionId),
+    onSuccess: () => {
+      toast.success('Account activated')
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to activate')
+    },
+  })
+
+  const deactivateMutation = useMutation({
+    mutationFn: (connectionId: number) => suppliersApi.deactivateConnection(connectionId),
+    onSuccess: () => {
+      toast.success('Account deactivated')
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to deactivate')
+    },
+  })
+
   const syncMutation = useMutation({
-    mutationFn: (supplier: string) => suppliersApi.sync(supplier),
-    onSuccess: (response, supplier) => {
-      toast.success(`Synced ${response.data.products_synced} products from ${getSupplierName(supplier)}`)
+    mutationFn: (connectionId: number) => suppliersApi.syncConnection(connectionId),
+    onSuccess: (response) => {
+      toast.success(`Synced ${response.data.products_synced} products`)
       queryClient.invalidateQueries({ queryKey: ['suppliers'] })
     },
     onError: (error: any) => {
@@ -98,10 +141,7 @@ export default function Suppliers() {
     return AVAILABLE_SUPPLIERS.find((s) => s.id === supplierId)
   }
 
-  // Get suppliers that aren't connected yet
-  const availableToConnect = AVAILABLE_SUPPLIERS.filter(
-    (s) => !connectedSuppliers.find((cs: any) => cs.supplier_type === s.id)
-  )
+  const hasConnections = connections.length > 0
 
   return (
     <div className="space-y-6">
@@ -112,31 +152,28 @@ export default function Suppliers() {
             Manage your print on demand supplier connections
           </p>
         </div>
-        {availableToConnect.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {availableToConnect.map((supplier) => (
-              <button
-                key={supplier.id}
-                onClick={() => handleConnectSupplierClick(supplier.id)}
-                className={cn(
-                  'px-4 py-2 rounded-lg font-medium transition-colors flex items-center',
-                  supplier.color.replace('text-', 'hover:text-').split(' ')[0],
-                  supplier.color
-                )}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Connect {supplier.name}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {AVAILABLE_SUPPLIERS.map((supplier) => (
+            <button
+              key={supplier.id}
+              onClick={() => handleConnectSupplierClick(supplier.id)}
+              className={cn(
+                'px-4 py-2 rounded-lg font-medium transition-colors flex items-center',
+                supplier.color
+              )}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add {supplier.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
         </div>
-      ) : connectedSuppliers.length === 0 ? (
+      ) : !hasConnections ? (
         <div className="card">
           <div className="card-body text-center py-12">
             <Truck className="w-12 h-12 mx-auto text-gray-300" />
@@ -145,7 +182,7 @@ export default function Suppliers() {
               Connect a POD supplier to start managing your products
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
-              {availableToConnect.map((supplier) => (
+              {AVAILABLE_SUPPLIERS.map((supplier) => (
                 <button
                   key={supplier.id}
                   onClick={() => handleConnectSupplierClick(supplier.id)}
@@ -162,96 +199,165 @@ export default function Suppliers() {
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          {connectedSuppliers.map((supplier: any) => {
-            const config = getSupplierConfig(supplier.supplier_type)
-            if (!config) return null
+        <div className="space-y-6">
+          {AVAILABLE_SUPPLIERS.map((supplierConfig) => {
+            const supplierConnections = connectionsByType[supplierConfig.id] || []
+            if (supplierConnections.length === 0) return null
 
             return (
-              <div
-                key={supplier.id}
-                className={cn('card border-l-4', config.borderColor)}
-              >
-                <div className="card-body">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div
-                        className={cn(
-                          'w-12 h-12 rounded-lg flex items-center justify-center',
-                          config.color
-                        )}
-                      >
-                        <Truck className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{config.name}</h3>
-                        <p className="text-sm text-gray-500">{config.description}</p>
-                        {supplier.last_sync && (
-                          <p className="text-xs text-gray-400 mt-1">
-                            Last synced: {new Date(supplier.last_sync).toLocaleString()}
-                          </p>
-                        )}
-                        {supplier.connection_error && (
-                          <p className="text-xs text-red-600 mt-1">
-                            Error: {supplier.connection_error}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+              <div key={supplierConfig.id} className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <span className={cn('w-3 h-3 rounded-full mr-2', supplierConfig.color.split(' ')[0])} />
+                    {supplierConfig.name}
+                    <span className="ml-2 text-sm font-normal text-gray-500">
+                      ({supplierConnections.length} account{supplierConnections.length !== 1 ? 's' : ''})
+                    </span>
+                  </h2>
+                  <button
+                    onClick={() => handleConnectSupplierClick(supplierConfig.id)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center',
+                      supplierConfig.color
+                    )}
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Account
+                  </button>
+                </div>
 
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => syncMutation.mutate(supplier.supplier_type)}
-                        disabled={syncMutation.isPending}
-                        className="btn-secondary text-sm"
-                      >
-                        <RefreshCw
-                          className={cn(
-                            'w-4 h-4 mr-1',
-                            syncMutation.isPending && 'animate-spin'
-                          )}
-                        />
-                        Sync Products
-                      </button>
-
-                      <div className="relative">
-                        <button
-                          onClick={() => setOpenMenu(openMenu === supplier.id ? null : supplier.id)}
-                          className="p-2 hover:bg-gray-100 rounded"
-                        >
-                          <MoreVertical className="w-5 h-5 text-gray-500" />
-                        </button>
-
-                        {openMenu === supplier.id && (
-                          <>
+                <div className="space-y-2">
+                  {supplierConnections.map((connection) => (
+                    <div
+                      key={connection.id}
+                      className={cn(
+                        'card border-l-4',
+                        supplierConfig.borderColor,
+                        !connection.is_active && 'opacity-60'
+                      )}
+                    >
+                      <div className="card-body py-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
                             <div
-                              className="fixed inset-0 z-10"
-                              onClick={() => setOpenMenu(null)}
-                            />
-                            <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border z-20">
-                              <a
-                                href={config.docsUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                              >
-                                <ExternalLink className="w-4 h-4 mr-2" />
-                                API Documentation
-                              </a>
-                              <button
-                                onClick={() => disconnectMutation.mutate(supplier.supplier_type)}
-                                disabled={disconnectMutation.isPending}
-                                className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Disconnect
-                              </button>
+                              className={cn(
+                                'w-10 h-10 rounded-lg flex items-center justify-center',
+                                supplierConfig.color
+                              )}
+                            >
+                              <User className="w-5 h-5" />
                             </div>
-                          </>
-                        )}
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <h3 className="font-medium text-gray-900">
+                                  {connection.account_name || `${supplierConfig.name} Account`}
+                                </h3>
+                                {!connection.is_active && (
+                                  <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded">
+                                    Inactive
+                                  </span>
+                                )}
+                              </div>
+                              {connection.account_email && (
+                                <p className="text-sm text-gray-500">{connection.account_email}</p>
+                              )}
+                              <div className="flex items-center space-x-3 mt-1">
+                                {connection.last_sync && (
+                                  <p className="text-xs text-gray-400">
+                                    Last synced: {new Date(connection.last_sync).toLocaleString()}
+                                  </p>
+                                )}
+                                {connection.connection_error && (
+                                  <p className="text-xs text-red-600">
+                                    Error: {connection.connection_error}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            {/* Sync button */}
+                            <button
+                              onClick={() => syncMutation.mutate(connection.id)}
+                              disabled={syncMutation.isPending || !connection.is_active}
+                              className="btn-secondary text-sm"
+                              title="Sync products"
+                            >
+                              <RefreshCw
+                                className={cn(
+                                  'w-4 h-4 mr-1',
+                                  syncMutation.isPending && 'animate-spin'
+                                )}
+                              />
+                              Sync
+                            </button>
+
+                            {/* Activate/Deactivate button */}
+                            {connection.is_active ? (
+                              <button
+                                onClick={() => deactivateMutation.mutate(connection.id)}
+                                disabled={deactivateMutation.isPending}
+                                className="btn-secondary text-sm text-orange-600 hover:bg-orange-50"
+                                title="Deactivate account"
+                              >
+                                <PowerOff className="w-4 h-4 mr-1" />
+                                Deactivate
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => activateMutation.mutate(connection.id)}
+                                disabled={activateMutation.isPending}
+                                className="btn-secondary text-sm text-green-600 hover:bg-green-50"
+                                title="Activate account"
+                              >
+                                <Power className="w-4 h-4 mr-1" />
+                                Activate
+                              </button>
+                            )}
+
+                            {/* Menu dropdown */}
+                            <div className="relative">
+                              <button
+                                onClick={() => setOpenMenu(openMenu === connection.id ? null : connection.id)}
+                                className="p-2 hover:bg-gray-100 rounded"
+                              >
+                                <MoreVertical className="w-5 h-5 text-gray-500" />
+                              </button>
+
+                              {openMenu === connection.id && (
+                                <>
+                                  <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={() => setOpenMenu(null)}
+                                  />
+                                  <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border z-20">
+                                    <a
+                                      href={supplierConfig.docsUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                    >
+                                      <ExternalLink className="w-4 h-4 mr-2" />
+                                      API Documentation
+                                    </a>
+                                    <button
+                                      onClick={() => disconnectMutation.mutate(connection.id)}
+                                      disabled={disconnectMutation.isPending}
+                                      className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Disconnect
+                                    </button>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             )

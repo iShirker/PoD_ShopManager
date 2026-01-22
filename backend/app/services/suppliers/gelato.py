@@ -170,16 +170,33 @@ def validate_gelato_connection(api_key=None, access_token=None):
         products = service.validate_connection()
 
         # Also try to get stores
+        store_list = []
+        store_name = None
         try:
             stores = service.get_stores()
             store_list = stores.get('stores', [])
+            if store_list:
+                store_name = store_list[0].get('name') or store_list[0].get('title')
         except Exception:
-            store_list = []
+            pass
+
+        # Extract account name from API key format or store name
+        account_name = store_name
+        if not account_name and api_key:
+            # API key format: clientId-...:secret
+            # Try to extract a meaningful identifier
+            if ':' in api_key:
+                client_part = api_key.split(':')[0]
+                # Use last 8 chars of client ID as identifier
+                account_name = f"Gelato ({client_part[-8:]})"
+            else:
+                account_name = f"Gelato ({api_key[-8:]})"
 
         return True, {
             'stores': store_list,
             'store_id': store_list[0].get('id') if store_list else None,
-            'products_available': len(products.get('products', [])) > 0
+            'products_available': len(products.get('products', [])) > 0,
+            'account_name': account_name,
         }
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 401:

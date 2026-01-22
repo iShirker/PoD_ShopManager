@@ -199,12 +199,28 @@ def validate_printify_connection(api_token, shop_id=None):
         service = PrintifyService(api_token)
         shops = service.get_shops()
 
+        # Extract account info
+        account_name = None
+        email = None
+
         if shop_id:
             # Validate specific shop access
             shop = service.get_shop(shop_id)
-            return True, {'shop': shop}
+            account_name = shop.get('title') or shop.get('name')
+            return True, {
+                'shop': shop,
+                'account_name': account_name,
+            }
 
-        return True, {'shops': shops}
+        # Use first shop name as account name
+        if shops and len(shops) > 0:
+            first_shop = shops[0]
+            account_name = first_shop.get('title') or first_shop.get('name')
+
+        return True, {
+            'shops': shops,
+            'account_name': account_name or f"Printify ({api_token[-8:]})",
+        }
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 401:
             return False, {'error': 'Invalid API token'}

@@ -22,6 +22,11 @@ class SupplierConnection(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
     supplier_type = db.Column(db.String(50), nullable=False)
 
+    # Account identification
+    account_name = db.Column(db.String(255), nullable=True)  # Display name for the account
+    account_email = db.Column(db.String(255), nullable=True)  # Email associated with the account
+    account_id = db.Column(db.String(255), nullable=True)  # Supplier's account/user ID
+
     # API credentials (encrypted in production)
     api_key = db.Column(db.String(500), nullable=True)
     api_secret = db.Column(db.String(500), nullable=True)
@@ -47,10 +52,6 @@ class SupplierConnection(db.Model):
     products = db.relationship('SupplierProduct', backref='supplier_connection', lazy='dynamic',
                                cascade='all, delete-orphan')
 
-    __table_args__ = (
-        db.UniqueConstraint('user_id', 'supplier_type', name='unique_user_supplier'),
-    )
-
     def to_dict(self, include_tokens=False):
         """
         Convert supplier connection to dictionary.
@@ -64,6 +65,9 @@ class SupplierConnection(db.Model):
         data = {
             'id': self.id,
             'supplier_type': self.supplier_type,
+            'account_name': self.account_name,
+            'account_email': self.account_email,
+            'account_id': self.account_id,
             'is_active': self.is_active,
             'is_connected': self.is_connected,
             'last_sync': self.last_sync.isoformat() if self.last_sync else None,

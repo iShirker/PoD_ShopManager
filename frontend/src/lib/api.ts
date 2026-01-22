@@ -89,14 +89,54 @@ export const usersApi = {
 
 // Suppliers API
 export const suppliersApi = {
+  // List all connections
   list: () => api.get('/suppliers'),
-  get: (supplierType: string) => api.get(`/suppliers/${supplierType}`),
-  connect: (supplierType: string, apiKey: string, shopId?: string) =>
-    api.post(`/suppliers/${supplierType}/connect`, { api_key: apiKey, shop_id: shopId }),
+
+  // Get connections for a supplier type
+  getByType: (supplierType: string) => api.get(`/suppliers/${supplierType}`),
+
+  // Get specific connection
+  getConnection: (connectionId: number) => api.get(`/suppliers/connection/${connectionId}`),
+
+  // Connect new account
+  connect: (supplierType: string, apiKey: string, shopId?: string, accountName?: string) =>
+    api.post(`/suppliers/${supplierType}/connect`, {
+      api_key: apiKey,
+      shop_id: shopId,
+      account_name: accountName,
+    }),
+
+  // Disconnect (delete) connection by ID
+  disconnectConnection: (connectionId: number) =>
+    api.post(`/suppliers/connection/${connectionId}/disconnect`),
+
+  // Activate connection
+  activateConnection: (connectionId: number) =>
+    api.post(`/suppliers/connection/${connectionId}/activate`),
+
+  // Deactivate connection
+  deactivateConnection: (connectionId: number) =>
+    api.post(`/suppliers/connection/${connectionId}/deactivate`),
+
+  // Sync connection
+  syncConnection: (connectionId: number) =>
+    api.post(`/suppliers/connection/${connectionId}/sync`),
+
+  // Get products for connection
+  getConnectionProducts: (connectionId: number, params?: { page?: number; per_page?: number; search?: string }) =>
+    api.get(`/suppliers/connection/${connectionId}/products`, { params }),
+
+  // Legacy: Disconnect all connections of a type
   disconnect: (supplierType: string) => api.post(`/suppliers/${supplierType}/disconnect`),
+
+  // Legacy: Sync all connections of a type
   sync: (supplierType: string) => api.post(`/suppliers/${supplierType}/sync`),
+
+  // Legacy: Get products from all connections of a type
   getProducts: (supplierType: string, params?: { page?: number; per_page?: number; search?: string }) =>
     api.get(`/suppliers/${supplierType}/products`, { params }),
+
+  // Get status summary
   getStatus: () => api.get('/suppliers/status'),
 }
 

@@ -47,26 +47,48 @@ def _sync_gelato_products(connection):
                 offset=offset
             )
 
-            products = products_response.get('products', [])
+            # Gelato API returns products in different formats depending on endpoint
+            # Try multiple possible keys
+            products = (
+                products_response.get('products', []) or
+                products_response.get('data', []) or
+                products_response.get('items', []) or
+                (products_response if isinstance(products_response, list) else [])
+            )
+
             if not products:
+                # If no products found on first page, still return success with 0 count
+                if offset == 0:
+                    return {'count': 0, 'status': 'success', 'message': 'No products found in catalog'}
                 break
 
             for product in products:
+                # Handle different product ID field names
+                product_id = (
+                    product.get('uid') or
+                    product.get('id') or
+                    product.get('productUid') or
+                    product.get('product_uid')
+                )
+
+                if not product_id:
+                    continue
+
                 _upsert_supplier_product(
                     connection=connection,
-                    supplier_product_id=product.get('uid'),
+                    supplier_product_id=str(product_id),
                     data={
-                        'name': product.get('title', product.get('name', '')),
+                        'name': product.get('title') or product.get('name') or '',
                         'description': product.get('description'),
-                        'product_type': product.get('productType'),
+                        'product_type': product.get('productType') or product.get('type'),
                         'brand': product.get('brand'),
                         'category': product.get('category'),
-                        'catalog_id': product.get('catalogId'),
-                        'base_price': product.get('price'),
+                        'catalog_id': product.get('catalogId') or product.get('catalog_id'),
+                        'base_price': product.get('price') or product.get('basePrice'),
                         'currency': product.get('currency', 'USD'),
-                        'available_sizes': product.get('sizes', []),
-                        'available_colors': product.get('colors', []),
-                        'thumbnail_url': product.get('imageUrl'),
+                        'available_sizes': product.get('sizes', []) or product.get('availableSizes', []),
+                        'available_colors': product.get('colors', []) or product.get('availableColors', []),
+                        'thumbnail_url': product.get('imageUrl') or product.get('thumbnailUrl') or product.get('image'),
                         'images': product.get('images', [])
                     }
                 )

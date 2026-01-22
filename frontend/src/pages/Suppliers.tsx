@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { suppliersApi } from '../lib/api'
-import { getSupplierName } from '../lib/utils'
 import { cn } from '../lib/utils'
 import {
   Truck, Plus, Loader2, RefreshCw, ExternalLink, MoreVertical, Trash2,
@@ -135,10 +134,6 @@ export default function Suppliers() {
 
   const handleApiKeySuccess = () => {
     queryClient.invalidateQueries({ queryKey: ['suppliers'] })
-  }
-
-  const getSupplierConfig = (supplierId: string) => {
-    return AVAILABLE_SUPPLIERS.find((s) => s.id === supplierId)
   }
 
   const hasConnections = connections.length > 0

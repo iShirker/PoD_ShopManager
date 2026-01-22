@@ -81,8 +81,13 @@ def create_app(config_name='default'):
     def health_check():
         return {'status': 'healthy', 'message': 'POD Manager API is running'}
 
-    # Create database tables
+    # Run startup migrations and create database tables
     with app.app_context():
+        # Run migrations first to handle schema changes
+        from app.migrations import run_startup_migrations
+        run_startup_migrations(db, app)
+
+        # Then create any new tables
         db.create_all()
 
     return app

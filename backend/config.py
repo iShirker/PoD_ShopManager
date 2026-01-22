@@ -62,6 +62,9 @@ class Config:
 
     # Frontend URL (for CORS and OAuth redirects)
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+    
+    # Backend URL (for OAuth redirect URIs)
+    BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:5000')
 
     # Rate limiting
     RATELIMIT_DEFAULT = "200 per day"

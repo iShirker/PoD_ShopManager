@@ -2,6 +2,7 @@
 Gelato API service.
 Handles communication with Gelato Print on Demand API.
 """
+import base64
 import requests
 from flask import current_app
 
@@ -16,7 +17,7 @@ class GelatoService:
         Initialize Gelato service.
 
         Args:
-            api_key: Gelato API key
+            api_key: Gelato API key (can be simple key or clientId:secret format)
             access_token: Gelato OAuth access token
         """
         self.api_key = api_key
@@ -28,7 +29,12 @@ class GelatoService:
         if self.access_token:
             headers['Authorization'] = f'Bearer {self.access_token}'
         elif self.api_key:
-            headers['X-API-KEY'] = self.api_key
+            # Check if it's a clientId:secret format (Basic Auth)
+            if ':' in self.api_key:
+                encoded = base64.b64encode(self.api_key.encode()).decode()
+                headers['Authorization'] = f'Basic {encoded}'
+            else:
+                headers['X-API-KEY'] = self.api_key
         return headers
 
     def _request(self, method, endpoint, **kwargs):

@@ -29,12 +29,8 @@ class GelatoService:
         if self.access_token:
             headers['Authorization'] = f'Bearer {self.access_token}'
         elif self.api_key:
-            # Check if it's a clientId:secret format (Basic Auth)
-            if ':' in self.api_key:
-                encoded = base64.b64encode(self.api_key.encode()).decode()
-                headers['Authorization'] = f'Basic {encoded}'
-            else:
-                headers['X-API-KEY'] = self.api_key
+            # Gelato API uses X-API-KEY header for all API key formats
+            headers['X-API-KEY'] = self.api_key
         return headers
 
     def _request(self, method, endpoint, **kwargs):

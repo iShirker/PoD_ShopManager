@@ -99,7 +99,6 @@ def connect_supplier(supplier_type):
     Request body:
         api_key: API key or token
         shop_id: Optional shop/store ID (required for Printify)
-        account_name: Optional display name for this account
 
     Returns:
         Connection status and details
@@ -115,7 +114,6 @@ def connect_supplier(supplier_type):
 
     api_key = data.get('api_key', '').strip()
     shop_id = data.get('shop_id', '').strip()
-    account_name = data.get('account_name', '').strip()
 
     if not api_key:
         return jsonify({'error': 'API key is required'}), 400
@@ -179,10 +177,10 @@ def connect_supplier(supplier_type):
     connection.is_active = True
     connection.connection_error = None
 
-    # Set account info from validation result or user input
-    connection.account_name = account_name or result.get('account_name') or result.get('email') or f"Account {supplier_type}"
-    connection.account_email = result.get('email')
-    connection.account_id = result.get('account_id') or result.get('user_id')
+    # Set account info from validation result (fetched from API)
+    connection.account_name = result.get('account_name') or result.get('store_name') or result.get('shop_name') or f"{supplier_type.capitalize()} Account"
+    connection.account_email = result.get('email') or result.get('account_email')
+    connection.account_id = result.get('account_id') or result.get('user_id') or result.get('store_id') or result.get('shop_id')
 
     db.session.commit()
 

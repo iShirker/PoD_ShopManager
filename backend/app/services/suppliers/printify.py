@@ -207,19 +207,24 @@ def validate_printify_connection(api_token, shop_id=None):
             # Validate specific shop access
             shop = service.get_shop(shop_id)
             account_name = shop.get('title') or shop.get('name')
+            # Try to extract email from shop data if available
+            email = shop.get('email') or shop.get('owner_email')
             return True, {
                 'shop': shop,
                 'account_name': account_name,
+                'email': email,
             }
 
         # Use first shop name as account name
         if shops and len(shops) > 0:
             first_shop = shops[0]
             account_name = first_shop.get('title') or first_shop.get('name')
+            email = first_shop.get('email') or first_shop.get('owner_email')
 
         return True, {
             'shops': shops,
             'account_name': account_name or f"Printify ({api_token[-8:]})",
+            'email': email,
         }
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 401:

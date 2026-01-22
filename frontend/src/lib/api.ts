@@ -99,11 +99,10 @@ export const suppliersApi = {
   getConnection: (connectionId: number) => api.get(`/suppliers/connection/${connectionId}`),
 
   // Connect new account
-  connect: (supplierType: string, apiKey: string, shopId?: string, accountName?: string) =>
+  connect: (supplierType: string, apiKey: string, shopId?: string) =>
     api.post(`/suppliers/${supplierType}/connect`, {
       api_key: apiKey,
       shop_id: shopId,
-      account_name: accountName,
     }),
 
   // Disconnect (delete) connection by ID

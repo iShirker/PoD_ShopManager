@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Loader2, Key, User } from 'lucide-react'
+import { X, Loader2, Key } from 'lucide-react'
 import { suppliersApi } from '../lib/api'
 import toast from 'react-hot-toast'
 
@@ -38,7 +38,6 @@ const SUPPLIER_CONFIG = {
 
 export default function SupplierLoginModal({ supplier, onClose, onApiKeySuccess }: SupplierLoginModalProps) {
   const [apiKey, setApiKey] = useState('')
-  const [accountName, setAccountName] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   const config = SUPPLIER_CONFIG[supplier]
@@ -51,7 +50,7 @@ export default function SupplierLoginModal({ supplier, onClose, onApiKeySuccess 
     }
     setIsLoading(true)
     try {
-      await suppliersApi.connect(supplier, apiKey, undefined, accountName || undefined)
+      await suppliersApi.connect(supplier, apiKey, undefined)
       toast.success(`${config.name} connected successfully`)
       onApiKeySuccess?.()
       onClose()
@@ -107,25 +106,6 @@ export default function SupplierLoginModal({ supplier, onClose, onApiKeySuccess 
                 required
               />
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Account Name <span className="text-gray-400">(optional)</span>
-            </label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                value={accountName}
-                onChange={(e) => setAccountName(e.target.value)}
-                placeholder="e.g., My Business Account"
-                className="input pl-10"
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Give this account a name to identify it (useful if you have multiple accounts)
-            </p>
           </div>
 
           <button

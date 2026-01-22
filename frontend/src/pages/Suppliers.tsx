@@ -243,19 +243,26 @@ export default function Suppliers() {
                               <User className="w-5 h-5" />
                             </div>
                             <div>
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-2 flex-wrap">
                                 <h3 className="font-medium text-gray-900">
-                                  {connection.account_name || `${supplierConfig.name} Account`}
+                                  {supplierConfig.name}
                                 </h3>
+                                {connection.account_email && (
+                                  <span className="text-sm text-gray-500">
+                                    • {connection.account_email}
+                                  </span>
+                                )}
+                                {!connection.account_email && connection.account_name && (
+                                  <span className="text-sm text-gray-500">
+                                    • {connection.account_name}
+                                  </span>
+                                )}
                                 {!connection.is_active && (
                                   <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded">
                                     Inactive
                                   </span>
                                 )}
                               </div>
-                              {connection.account_email && (
-                                <p className="text-sm text-gray-500">{connection.account_email}</p>
-                              )}
                               <div className="flex items-center space-x-3 mt-1">
                                 {connection.last_sync && (
                                   <p className="text-xs text-gray-400">

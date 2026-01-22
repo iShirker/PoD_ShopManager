@@ -185,11 +185,15 @@ def validate_printful_connection(api_key):
         service = PrintfulService(api_key)
         store = service.get_store_info()
 
+        # Extract email if available in store info
+        email = store.get('email') or store.get('owner_email') or store.get('contact_email')
+
         return True, {
             'store': store,
             'store_id': store.get('id'),
             'store_name': store.get('name'),
             'account_name': store.get('name') or f"Printful ({api_key[-8:]})",
+            'email': email,
         }
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 401:

@@ -172,11 +172,15 @@ def validate_gelato_connection(api_key=None, access_token=None):
         # Also try to get stores
         store_list = []
         store_name = None
+        email = None
         try:
             stores = service.get_stores()
             store_list = stores.get('stores', [])
             if store_list:
-                store_name = store_list[0].get('name') or store_list[0].get('title')
+                first_store = store_list[0]
+                store_name = first_store.get('name') or first_store.get('title')
+                # Try to extract email if available
+                email = first_store.get('email') or first_store.get('owner_email') or first_store.get('contact_email')
         except Exception:
             pass
 
@@ -197,6 +201,7 @@ def validate_gelato_connection(api_key=None, access_token=None):
             'store_id': store_list[0].get('id') if store_list else None,
             'products_available': len(products.get('products', [])) > 0,
             'account_name': account_name,
+            'email': email,
         }
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 401:

@@ -56,7 +56,15 @@ class GelatoService:
 
     def get_stores(self):
         """Get all stores associated with the account."""
-        return self._request('GET', 'stores')
+        # Use ecommerce API for stores
+        url = "https://ecommerce.gelatoapis.com/v1/stores"
+        response = requests.get(url, headers=self.headers)
+        response.raise_for_status()
+        return response.json()
+
+    def validate_connection(self):
+        """Validate the API key by fetching products."""
+        return self._request('GET', 'products', params={'limit': 1})
 
     def get_products(self, store_id=None, limit=100, offset=0):
         """
@@ -162,15 +170,26 @@ def validate_gelato_connection(api_key=None, access_token=None):
     """
     try:
         service = GelatoService(api_key=api_key, access_token=access_token)
-        stores = service.get_stores()
+        # Validate by fetching products (stores endpoint may be empty)
+        products = service.validate_connection()
+
+        # Also try to get stores
+        try:
+            stores = service.get_stores()
+            store_list = stores.get('stores', [])
+        except Exception:
+            store_list = []
 
         return True, {
-            'stores': stores.get('stores', []),
-            'store_id': stores.get('stores', [{}])[0].get('id') if stores.get('stores') else None
+            'stores': store_list,
+            'store_id': store_list[0].get('id') if store_list else None,
+            'products_available': len(products.get('products', [])) > 0
         }
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 401:
             return False, {'error': 'Invalid API key'}
+        if e.response.status_code == 403:
+            return False, {'error': 'Access forbidden - check API key permissions'}
         return False, {'error': str(e)}
     except Exception as e:
         return False, {'error': str(e)}

@@ -47,26 +47,19 @@ def create_app(config_name='default'):
     # Log CORS configuration for debugging
     app.logger.info(f"CORS configured for frontend: {frontend_url}")
     
-    CORS(app, resources={
-        r"/api/*": {
-            "origins": [frontend_url],
-            "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"],
-            "supports_credentials": True,
-            "expose_headers": ["Content-Type", "Authorization"]
-        }
-    })
-    
-    # Add CORS headers manually for OPTIONS requests (preflight)
-    @app.after_request
-    def after_request(response):
-        origin = request.headers.get('Origin')
-        if origin and origin == frontend_url:
-            response.headers.add('Access-Control-Allow-Origin', frontend_url)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
-            response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-        return response
+    # Configure CORS - Flask-CORS will handle all CORS headers automatically
+    CORS(app, 
+         resources={
+             r"/api/*": {
+                 "origins": [frontend_url],
+                 "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+                 "allow_headers": ["Content-Type", "Authorization"],
+                 "supports_credentials": True,
+                 "expose_headers": ["Content-Type", "Authorization"]
+             }
+         },
+         # Prevent duplicate headers
+         automatic_options=True)
 
     # Register blueprints
     from app.blueprints.auth import auth_bp

@@ -233,9 +233,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                     </div>
                     {categories.length > 0 && (
                       <select
+                        key={`category-${selectedConnectionId}`}
                         value={selectedCategory}
                         onChange={(e) => {
-                          setSelectedCategory(e.target.value)
+                          e.preventDefault()
+                          const newCategory = e.target.value
+                          setSelectedCategory(newCategory)
                           setPage(1)
                         }}
                         className="input"

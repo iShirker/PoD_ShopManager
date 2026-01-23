@@ -628,7 +628,14 @@ def get_supplier_catalog(connection_id):
                             continue
                     
                     # Apply category filter
-                    product_category = product_data.get('category') or product.get('category')
+                    # For Gelato, category might be in product_data from detailed fetch
+                    product_category = (
+                        product_data.get('category') or 
+                        product_data.get('productCategory') or
+                        product.get('category') or
+                        product.get('productCategory') or
+                        product_type_uid  # Use productTypeUid as fallback category
+                    )
                     if category and product_category != category:
                         continue
                     
@@ -952,13 +959,48 @@ def get_supplier_catalog(connection_id):
                 for product in products:
                     if not isinstance(product, dict):
                         continue
+                    
+                    # Printful product structure:
+                    # - name: Product name (may contain model number)
+                    # - type: Product type (e.g., "DIRECT-TO-FABRIC")
+                    # - type_name: Category name
+                    # - brand: Manufacturer/brand (e.g., "Gildan")
+                    # - model: Model number (may be in name or separate field)
+                    
+                    product_name = product.get('name', '')
+                    product_brand = product.get('brand') or product.get('manufacturer')
+                    product_type_value = product.get('type')  # This is the type like "DIRECT-TO-FABRIC"
+                    product_category = product.get('type_name') or product.get('category') or product.get('type')  # Category should be type_name
+                    product_model = product.get('model') or product.get('model_number')
+                    
+                    # Try to extract model from name if not provided (e.g., "Gildan 18000" -> "18000")
+                    if not product_model and product_name and product_brand:
+                        # Remove brand from name and see if there's a model number
+                        name_without_brand = product_name.replace(product_brand, '').strip()
+                        # Look for numbers that might be model
+                        import re
+                        model_match = re.search(r'\b(\d{4,})\b', name_without_brand)
+                        if model_match:
+                            product_model = model_match.group(1)
+                    
+                    # Build product_type as "Brand Model" (e.g., "Gildan 18000")
+                    if product_brand and product_model:
+                        product_type_display = f"{product_brand} {product_model}"
+                    elif product_brand:
+                        product_type_display = product_brand
+                    elif product_model:
+                        product_type_display = product_model
+                    else:
+                        product_type_display = product_type_value or ''
                         
                     if search:
-                        name = product.get('name', '')
-                        if search.lower() not in name.lower():
+                        search_lower = search.lower()
+                        if (search_lower not in product_name.lower() and 
+                            search_lower not in (product_brand or '').lower() and
+                            search_lower not in (product_model or '').lower() and
+                            search_lower not in (product_type_display or '').lower()):
                             continue
                     
-                    product_category = product.get('type') or product.get('category')
                     if category and product_category != category:
                         continue
                     
@@ -980,11 +1022,11 @@ def get_supplier_catalog(connection_id):
                         'id': None,
                         'supplier_connection_id': connection.id,
                         'supplier_product_id': str(product.get('id', '')),
-                        'name': product.get('name', ''),
+                        'name': product_name,
                         'description': _strip_html(product.get('description')) if product.get('description') else None,
-                        'product_type': product.get('type'),
-                        'brand': product.get('brand'),
-                        'category': product_category,
+                        'product_type': product_type_display,  # "Brand Model" format
+                        'brand': product_brand,
+                        'category': product_category,  # Use type_name for category
                         'base_price': None,
                         'currency': 'USD',
                         'available_sizes': [],

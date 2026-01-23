@@ -21,7 +21,8 @@ class PrintifyService:
         self.api_token = api_token
         self.headers = {
             'Authorization': f'Bearer {api_token}',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'User-Agent': 'POD-ShopManager/1.0'
         }
 
     def _request(self, method, endpoint, **kwargs):

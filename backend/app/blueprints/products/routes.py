@@ -889,12 +889,24 @@ def get_supplier_catalog(connection_id):
                         if search.lower() not in name.lower():
                             continue
                     
-                    blueprint_category = blueprint.get('category')
+                    # Extract category from blueprint - check multiple possible field names
+                    blueprint_category = (
+                        blueprint.get('category') or
+                        blueprint.get('categoryName') or
+                        blueprint.get('category_name') or
+                        blueprint.get('productCategory') or
+                        blueprint.get('type') or
+                        blueprint.get('productType')
+                    )
                     # Normalize category for comparison (strip whitespace, handle None/empty)
                     if blueprint_category:
                         normalized_blueprint_category = blueprint_category.strip() or None
                     else:
                         normalized_blueprint_category = None
+                    
+                    # Log for debugging if no category found
+                    if not normalized_blueprint_category and len(catalog_products) < 3:
+                        current_app.logger.debug(f"Printify blueprint {blueprint.get('id')} has no category. Keys: {list(blueprint.keys())}")
                     
                     # Filter by category: if category is specified, only include matching products
                     # When category is None (All Categories), show all products
@@ -923,12 +935,13 @@ def get_supplier_catalog(connection_id):
                     catalog_products.append({
                         'id': None,
                         'supplier_connection_id': connection.id,
-                        'supplier_product_id': str(blueprint.get('id', '')),
-                        'blueprint_id': str(blueprint.get('id', '')),
-                        'name': blueprint.get('title', '') or blueprint.get('name', ''),
-                        'description': blueprint.get('description'),  # Keep HTML for Printify
-                        'product_type': blueprint.get('model') or blueprint.get('title', ''),
-                        'brand': blueprint.get('brand'),
+                        'supplier_product_id': str(blueprint_id or ''),
+                        'blueprint_id': str(blueprint_id or ''),
+                        'name': (blueprint_data.get('title') or blueprint_data.get('name') or 
+                                blueprint.get('title', '') or blueprint.get('name', '')),
+                        'description': blueprint_data.get('description') or blueprint.get('description'),  # Keep HTML for Printify
+                        'product_type': blueprint_data.get('model') or blueprint_data.get('title') or blueprint.get('model') or blueprint.get('title', ''),
+                        'brand': blueprint_data.get('brand') or blueprint.get('brand'),
                         'category': normalized_blueprint_category,
                         'base_price': None,  # Pricing varies by provider
                         'currency': 'USD',

@@ -894,22 +894,9 @@ def get_supplier_catalog(connection_id):
                     
                     blueprint_id = blueprint.get('id')
                     
-                    # Try to get detailed blueprint info for better category extraction
-                    blueprint_details = None
-                    try:
-                        if blueprint_id and len(catalog_products) < 10:  # Fetch details for first 10 to get categories
-                            from app.services.suppliers.printify import PrintifyService
-                            detail_service = PrintifyService(connection.api_key)
-                            blueprint_details = detail_service.get_blueprint(blueprint_id)
-                            current_app.logger.debug(f"Fetched Printify blueprint details for {blueprint_id}")
-                    except Exception as detail_error:
-                        current_app.logger.debug(f"Could not fetch Printify blueprint details for {blueprint_id}: {str(detail_error)}")
-                        blueprint_details = None
-                    
-                    # Use detailed blueprint if available, otherwise use basic blueprint
-                    blueprint_data = blueprint_details if blueprint_details else blueprint
-                    if isinstance(blueprint_data, dict):
-                        blueprint_data = blueprint_data.get('blueprint') or blueprint_data.get('data') or blueprint_data
+                    # Use basic blueprint data - it already contains all needed info (category, brand, model, images)
+                    # No need to fetch individual blueprint details as it causes timeouts with many blueprints
+                    blueprint_data = blueprint
                         
                     if search:
                         name = (blueprint_data.get('title') or blueprint_data.get('name') or 

@@ -4,7 +4,13 @@ This folder contains all test scripts for the PoD Shop Manager project.
 
 ## Purpose
 
-Test scripts have been moved here from the `backend/` folder to prevent Railway from redeploying the backend service when test scripts are modified.
+Test scripts are located here (not in `backend/`) to prevent Railway from redeploying the backend service when test scripts are modified.
+
+## Important Notes
+
+- **All new test scripts MUST be created in this folder only** - never in the `backend/` folder
+- **Default backend URL**: When testing the backend, use the production URL: `https://podshopmanagerbackend-production.up.railway.app`
+- Scripts can be modified for local testing by changing the `BACKEND_URL` variable
 
 ## Scripts
 

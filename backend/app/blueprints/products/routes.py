@@ -3,6 +3,7 @@ Product comparison and switching routes.
 Handles supplier comparison and product migration between suppliers.
 """
 import re
+import requests
 from datetime import datetime
 from flask import request, jsonify, make_response, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -830,15 +831,50 @@ def get_supplier_catalog(connection_id):
                 })
             elif connection.supplier_type == SupplierType.PRINTFUL.value:
                 from app.services.suppliers.printful import PrintfulService
+                from app.services.oauth import refresh_printful_token
+                
                 if not connection.access_token:
                     raise ValueError("Printful access token is missing")
                 
+                access_token = connection.access_token
+                
                 try:
-                    service = PrintfulService(connection.access_token)
+                    service = PrintfulService(access_token)
                     products_response = service.get_products()
                     current_app.logger.info(f"Printful API response type: {type(products_response)}, is None: {products_response is None}")
                     if isinstance(products_response, dict):
                         current_app.logger.info(f"Printful response keys: {list(products_response.keys())}")
+                except requests.exceptions.HTTPError as http_error:
+                    # Handle 401 Unauthorized - try to refresh token
+                    if http_error.response.status_code == 401 and connection.refresh_token:
+                        current_app.logger.info("Printful access token expired, attempting refresh...")
+                        try:
+                            token_data = refresh_printful_token(connection.refresh_token)
+                            new_access_token = token_data.get('access_token')
+                            if new_access_token:
+                                # Update connection with new token
+                                connection.access_token = new_access_token
+                                if token_data.get('refresh_token'):
+                                    connection.refresh_token = token_data.get('refresh_token')
+                                db.session.commit()
+                                current_app.logger.info("Printful token refreshed successfully")
+                                
+                                # Retry with new token
+                                service = PrintfulService(new_access_token)
+                                products_response = service.get_products()
+                                current_app.logger.info(f"Printful API response type after refresh: {type(products_response)}")
+                            else:
+                                raise ValueError("Failed to refresh Printful token: no access_token in response")
+                        except Exception as refresh_error:
+                            current_app.logger.error(f"Failed to refresh Printful token: {str(refresh_error)}", exc_info=True)
+                            raise ValueError(f"Printful access token expired and refresh failed. Please reconnect your Printful account. Error: {str(refresh_error)}")
+                    else:
+                        # Other HTTP errors or no refresh token
+                        error_msg = f"Printful API error: {http_error.response.status_code}"
+                        if http_error.response.status_code == 401:
+                            error_msg += " - Unauthorized. Access token may be invalid or expired."
+                        current_app.logger.error(f"{error_msg}: {str(http_error)}", exc_info=True)
+                        raise ValueError(error_msg)
                 except Exception as api_error:
                     current_app.logger.error(f"Printful API call failed: {str(api_error)}", exc_info=True)
                     raise

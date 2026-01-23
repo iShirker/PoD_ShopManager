@@ -124,24 +124,48 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                       setSelectedCategory('')
                     }}
                     className={cn(
-                      'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                      'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors',
                       selectedConnectionId === connection.id
                         ? 'bg-primary-600 text-white'
-                        : 'bg-white text-gray-700 hover:bg-gray-100'
+                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
                     )}
                   >
-                    <div className="flex items-center justify-between">
-                      <span>{connection.account_name || getSupplierName(connection.supplier_type)}</span>
-                      <span
-                        className={cn(
-                          'text-xs px-2 py-0.5 rounded',
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">
+                          {connection.account_name || connection.account_email || 'Unnamed Account'}
+                        </span>
+                        <span
+                          className={cn(
+                            'text-xs px-2 py-0.5 rounded font-medium',
+                            selectedConnectionId === connection.id
+                              ? 'bg-white bg-opacity-20'
+                              : getSupplierColor(connection.supplier_type)
+                          )}
+                        >
+                          {getSupplierName(connection.supplier_type)}
+                        </span>
+                      </div>
+                      {connection.account_email && connection.account_name && (
+                        <span className={cn(
+                          'text-xs',
                           selectedConnectionId === connection.id
-                            ? 'bg-white bg-opacity-20'
-                            : getSupplierColor(connection.supplier_type)
-                        )}
-                      >
-                        {getSupplierName(connection.supplier_type)}
-                      </span>
+                            ? 'text-white text-opacity-80'
+                            : 'text-gray-500'
+                        )}>
+                          {connection.account_email}
+                        </span>
+                      )}
+                      {!connection.account_name && !connection.account_email && (
+                        <span className={cn(
+                          'text-xs',
+                          selectedConnectionId === connection.id
+                            ? 'text-white text-opacity-80'
+                            : 'text-gray-500'
+                        )}>
+                          {getSupplierName(connection.supplier_type)} Account
+                        </span>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -161,6 +185,29 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
               </div>
             ) : (
               <>
+                {/* Selected Supplier Info */}
+                {catalog.supplier && (
+                  <div className="p-4 border-b bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-gray-900">
+                          {catalog.supplier.name}
+                        </h3>
+                        {catalog.supplier.account_email && (
+                          <p className="text-sm text-gray-500 mt-0.5">
+                            {catalog.supplier.account_email}
+                          </p>
+                        )}
+                      </div>
+                      <span className={cn(
+                        'text-xs px-2 py-1 rounded font-medium',
+                        getSupplierColor(catalog.supplier.type)
+                      )}>
+                        {getSupplierName(catalog.supplier.type)}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 {/* Search and Filters */}
                 <div className="p-4 border-b bg-white">
                   <div className="flex items-center gap-4">

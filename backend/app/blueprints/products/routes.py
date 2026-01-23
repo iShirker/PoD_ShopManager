@@ -539,7 +539,10 @@ def get_supplier_catalog(connection_id):
         },
         'supplier': {
             'type': connection.supplier_type,
-            'name': connection.account_name or connection.supplier_type
+            'name': connection.account_name or connection.account_email or connection.supplier_type,
+            'account_name': connection.account_name,
+            'account_email': connection.account_email,
+            'account_id': connection.account_id
         }
     })
 

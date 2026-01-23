@@ -516,7 +516,10 @@ def get_supplier_catalog(connection_id):
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     search = request.args.get('search', '')
-    category = request.args.get('category', '')
+    category = request.args.get('category', '').strip()  # Strip whitespace and handle empty string
+    # If category is empty string, treat as None (show all)
+    if not category:
+        category = None
 
     # Check if products exist in database
     product_count = SupplierProduct.query.filter_by(

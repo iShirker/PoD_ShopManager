@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { templatesApi } from '../lib/api'
-import { Loader2, DollarSign, TrendingUp } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { cn } from '../lib/utils'
 
 interface ProductPricingProps {
@@ -20,8 +20,6 @@ export default function ProductPricing({
   productId,
   productName,
   aliasName,
-  sizes,
-  colors,
 }: ProductPricingProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('config')
 

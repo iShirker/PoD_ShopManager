@@ -585,18 +585,20 @@ export default function TemplateDetail() {
                   <div>
                     <label className="label">Product Name *</label>
                     <input
-                      {...register('product_name', { defaultValue: product.product_name })}
+                      {...register('product_name')}
                       type="text"
                       className="input"
+                      defaultValue={product.product_name}
                       required
                     />
                   </div>
                   <div>
                     <label className="label">Alias Name</label>
                     <input
-                      {...register('alias_name', { defaultValue: product.alias_name })}
+                      {...register('alias_name')}
                       type="text"
                       className="input"
+                      defaultValue={product.alias_name}
                       placeholder="e.g., Premium Sweatshirt"
                     />
                     <p className="mt-1 text-xs text-gray-500">
@@ -606,19 +608,19 @@ export default function TemplateDetail() {
                   <div>
                     <label className="label">Sizes (comma-separated)</label>
                     <input
-                      {...register('selected_sizes_string', {
-                        defaultValue: product.selected_sizes?.join(', '),
-                      })}
+                      {...register('selected_sizes_string')}
                       type="text"
                       className="input"
+                      defaultValue={product.selected_sizes?.join(', ')}
                       placeholder="S, M, L, XL, 2XL"
                     />
                   </div>
                   <div>
                     <label className="label">Pricing Mode</label>
                     <select
-                      {...register('pricing_mode', { defaultValue: product.pricing_mode || 'global' })}
+                      {...register('pricing_mode')}
                       className="input"
+                      defaultValue={product.pricing_mode || 'global'}
                     >
                       <option value="global">Global (same price for all)</option>
                       <option value="per_size">Per Size</option>
@@ -631,11 +633,11 @@ export default function TemplateDetail() {
                     <input
                       {...register('global_price', {
                         valueAsNumber: true,
-                        defaultValue: product.global_price,
                       })}
                       type="number"
                       step="0.01"
                       className="input"
+                      defaultValue={product.global_price}
                       placeholder="29.99"
                     />
                   </div>

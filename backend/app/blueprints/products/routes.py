@@ -955,9 +955,9 @@ def get_supplier_catalog(connection_id):
                     if normalized_blueprint_category:
                         all_categories.add(normalized_blueprint_category)
                     
-                    # Extract thumbnail URL from images
+                    # Extract thumbnail URL from images (check both blueprint_data and blueprint)
                     thumbnail_url = None
-                    images_list = blueprint.get('images', []) or []
+                    images_list = blueprint_data.get('images', []) or blueprint.get('images', []) or []
                     if images_list:
                         if isinstance(images_list[0], str):
                             thumbnail_url = images_list[0]

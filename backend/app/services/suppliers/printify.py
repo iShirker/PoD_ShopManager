@@ -242,7 +242,9 @@ def validate_printify_connection(api_token, shop_id=None):
         # Use first shop name as account name
         if shops and len(shops) > 0:
             first_shop = shops[0]
+            # Printify shops have 'title' field, not 'name'
             account_name = first_shop.get('title') or first_shop.get('name')
+            # Printify shops don't typically have email in shop data
             email = first_shop.get('email') or first_shop.get('owner_email')
 
         # If no shops found, still validate the token is working

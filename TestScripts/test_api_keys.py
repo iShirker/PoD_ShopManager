@@ -4,9 +4,13 @@ Run: python test_api_keys.py
 """
 import requests
 import os
+import sys
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env from backend folder
+backend_path = Path(__file__).parent.parent / 'backend'
+load_dotenv(backend_path / '.env')
 
 
 def test_etsy():

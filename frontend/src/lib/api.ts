@@ -224,14 +224,24 @@ export const templatesApi = {
     supplier_type: string;
     product_name: string;
     product_type?: string;
+    alias_name?: string;
     external_product_id?: string;
     selected_sizes?: string[];
+    pricing_mode?: 'per_config' | 'per_size' | 'per_color' | 'global';
+    prices?: Record<string, number>;
+    global_price?: number;
   }) => api.post(`/templates/${templateId}/products`, data),
   updateProduct: (templateId: number, productId: number, data: Partial<{
     product_name: string;
+    alias_name?: string;
     selected_sizes: string[];
+    pricing_mode?: 'per_config' | 'per_size' | 'per_color' | 'global';
+    prices?: Record<string, number>;
+    global_price?: number;
     price_override: number;
   }>) => api.patch(`/templates/${templateId}/products/${productId}`, data),
+  getProductPricing: (templateId: number, productId: number, view?: 'config' | 'size' | 'color') =>
+    api.get(`/templates/${templateId}/products/${productId}/pricing`, { params: { view } }),
   deleteProduct: (templateId: number, productId: number) =>
     api.delete(`/templates/${templateId}/products/${productId}`),
   addColor: (templateId: number, productId: number, data: {

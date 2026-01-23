@@ -94,11 +94,23 @@ class TemplateProduct(db.Model):
     # Product info for the template
     product_name = db.Column(db.String(500), nullable=False)
     product_type = db.Column(db.String(255), nullable=True)  # e.g., "Gildan 18000"
+    alias_name = db.Column(db.String(255), nullable=True)  # Unique alias name within template
 
     # Variant selection
     selected_sizes = db.Column(db.JSON, default=list)  # List of selected sizes
 
-    # Pricing for this product in template
+    # Pricing configuration
+    # Pricing mode: 'per_config' (per size+color), 'per_size', 'per_color', or 'global'
+    pricing_mode = db.Column(db.String(20), default='global')
+    # Prices stored as JSON:
+    # - per_config: { "S_Black": 29.99, "M_Black": 31.99, ... }
+    # - per_size: { "S": 29.99, "M": 31.99, ... }
+    # - per_color: { "Black": 29.99, "White": 30.99, ... }
+    # - global: single price for all variants
+    prices = db.Column(db.JSON, default=dict)
+    global_price = db.Column(db.Float, nullable=True)  # Used when pricing_mode is 'global'
+
+    # Legacy pricing fields (kept for backward compatibility)
     price_override = db.Column(db.Float, nullable=True)
     price_markup = db.Column(db.Float, nullable=True)
 
@@ -127,7 +139,11 @@ class TemplateProduct(db.Model):
             'external_product_id': self.external_product_id,
             'product_name': self.product_name,
             'product_type': self.product_type,
+            'alias_name': self.alias_name,
             'selected_sizes': self.selected_sizes,
+            'pricing_mode': self.pricing_mode,
+            'prices': self.prices or {},
+            'global_price': self.global_price,
             'price_override': self.price_override,
             'price_markup': self.price_markup,
             'display_order': self.display_order,

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { suppliersApi, productsApi } from '../lib/api'
 import { getSupplierName, getSupplierColor, formatCurrency } from '../lib/utils'
 import { cn } from '../lib/utils'
-import { X, Search, Package, Loader2, Plus, Check } from 'lucide-react'
+import { X, Search, Package, Loader2, Plus } from 'lucide-react'
 
 interface AddProductModalProps {
   isOpen: boolean

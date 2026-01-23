@@ -18,6 +18,7 @@ def run_startup_migrations(db, app):
             _migrate_supplier_connections_multiple_accounts(db)
             _migrate_api_key_column_size(db)
             _migrate_user_products_tables(db)
+            _migrate_template_products_pricing(db)
             app.logger.info("Startup migrations completed successfully")
         except Exception as e:
             app.logger.error(f"Startup migration error: {e}")
@@ -163,3 +164,60 @@ def _migrate_user_products_tables(db):
 
     # Future schema migrations can be added here
     print("User products tables exist")
+
+
+def _migrate_template_products_pricing(db):
+    """
+    Migration to add pricing configuration fields to template_products table.
+    
+    Adds:
+    - alias_name: Unique alias name for product within template
+    - pricing_mode: Pricing mode (per_config, per_size, per_color, global)
+    - prices: JSON field for storing prices
+    - global_price: Global price when pricing_mode is 'global'
+    """
+    inspector = inspect(db.engine)
+    
+    # Check if the table exists
+    if 'template_products' not in inspector.get_table_names():
+        return  # Table doesn't exist yet, will be created by db.create_all()
+    
+    # Get existing columns
+    existing_columns = {col['name'] for col in inspector.get_columns('template_products')}
+    
+    with db.engine.connect() as conn:
+        # Add new columns if they don't exist
+        new_columns = [
+            ('alias_name', 'VARCHAR(255)'),
+            ('pricing_mode', 'VARCHAR(20)'),
+            ('prices', 'JSON'),
+            ('global_price', 'FLOAT'),
+        ]
+        
+        for col_name, col_type in new_columns:
+            if col_name not in existing_columns:
+                try:
+                    if col_type == 'JSON':
+                        # Use TEXT for SQLite, JSON for PostgreSQL
+                        db_url = str(db.engine.url)
+                        if 'postgresql' in db_url or 'postgres' in db_url:
+                            conn.execute(text(f'ALTER TABLE template_products ADD COLUMN {col_name} JSON'))
+                        else:
+                            # SQLite or other databases
+                            conn.execute(text(f'ALTER TABLE template_products ADD COLUMN {col_name} TEXT'))
+                    else:
+                        conn.execute(text(f'ALTER TABLE template_products ADD COLUMN {col_name} {col_type}'))
+                    conn.commit()
+                    print(f"Added column: {col_name}")
+                except Exception as e:
+                    # Column might already exist or other error
+                    print(f"Could not add column {col_name}: {e}")
+        
+        # Set default pricing_mode for existing rows
+        if 'pricing_mode' not in existing_columns:
+            try:
+                conn.execute(text("UPDATE template_products SET pricing_mode = 'global' WHERE pricing_mode IS NULL"))
+                conn.commit()
+                print("Set default pricing_mode for existing rows")
+            except Exception as e:
+                print(f"Could not set default pricing_mode: {e}")

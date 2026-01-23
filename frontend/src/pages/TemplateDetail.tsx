@@ -6,8 +6,9 @@ import toast from 'react-hot-toast'
 import { templatesApi, suppliersApi, shopsApi } from '../lib/api'
 import { getSupplierColor, getSupplierName } from '../lib/utils'
 import { cn } from '../lib/utils'
+import ProductPricing from '../components/ProductPricing'
 import {
-  ArrowLeft, Plus, Trash2, Loader2, X, Package
+  ArrowLeft, Plus, Trash2, Loader2, X, Package, Edit2, DollarSign
 } from 'lucide-react'
 
 export default function TemplateDetail() {
@@ -17,6 +18,8 @@ export default function TemplateDetail() {
   const [showAddProduct, setShowAddProduct] = useState(false)
   const [showAddColor, setShowAddColor] = useState<number | null>(null)
   const [showCreateListing, setShowCreateListing] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<number | null>(null)
+  const [showPricing, setShowPricing] = useState<number | null>(null)
 
   const { data: template, isLoading } = useQuery({
     queryKey: ['template', templateId],
@@ -83,6 +86,20 @@ export default function TemplateDetail() {
       templatesApi.deleteColor(Number(templateId), productId, colorId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['template', templateId] })
+    },
+  })
+
+  const updateProductMutation = useMutation({
+    mutationFn: ({ productId, data }: { productId: number; data: any }) =>
+      templatesApi.updateProduct(Number(templateId), productId, data),
+    onSuccess: () => {
+      toast.success('Product updated')
+      queryClient.invalidateQueries({ queryKey: ['template', templateId] })
+      queryClient.invalidateQueries({ queryKey: ['template-product-pricing'] })
+      setEditingProduct(null)
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Failed to update product')
     },
   })
 
@@ -204,7 +221,7 @@ export default function TemplateDetail() {
                   className="border border-gray-200 rounded-lg p-4"
                 >
                   <div className="flex items-start justify-between">
-                    <div>
+                    <div className="flex-1">
                       <div className="flex items-center space-x-2">
                         <span
                           className={cn(
@@ -218,23 +235,57 @@ export default function TemplateDetail() {
                           {product.product_name}
                         </h3>
                       </div>
+                      {product.alias_name && (
+                        <p className="text-sm text-primary-600 mt-1 font-medium">
+                          Alias: {product.alias_name}
+                        </p>
+                      )}
                       {product.product_type && (
                         <p className="text-sm text-gray-500 mt-1">
                           {product.product_type}
                         </p>
                       )}
                     </div>
-                    <button
-                      onClick={() => {
-                        if (confirm('Remove this product?')) {
-                          deleteProductMutation.mutate(product.id)
-                        }
-                      }}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setShowPricing(showPricing === product.id ? null : product.id)}
+                        className="text-primary-600 hover:text-primary-700"
+                        title="View Pricing"
+                      >
+                        <DollarSign className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setEditingProduct(product.id)}
+                        className="text-gray-600 hover:text-gray-700"
+                        title="Edit Product"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm('Remove this product?')) {
+                            deleteProductMutation.mutate(product.id)
+                          }
+                        }}
+                        className="text-red-600 hover:text-red-700"
+                        title="Remove Product"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Pricing View */}
+                  {showPricing === product.id && product.selected_sizes?.length > 0 && product.colors?.length > 0 && (
+                    <ProductPricing
+                      templateId={Number(templateId)}
+                      productId={product.id}
+                      productName={product.product_name}
+                      aliasName={product.alias_name}
+                      sizes={product.selected_sizes}
+                      colors={product.colors}
+                    />
+                  )}
 
                   {/* Sizes */}
                   {product.selected_sizes?.length > 0 && (
@@ -327,7 +378,16 @@ export default function TemplateDetail() {
               </button>
             </div>
             <form
-              onSubmit={handleSubmit((data) => addProductMutation.mutate(data))}
+              onSubmit={handleSubmit((data) => {
+                const submitData: any = {
+                  ...data,
+                  selected_sizes: data.selected_sizes_string
+                    ? data.selected_sizes_string.split(',').map((s: string) => s.trim())
+                    : [],
+                }
+                delete submitData.selected_sizes_string
+                addProductMutation.mutate(submitData)
+              })}
             >
               <div className="p-6 space-y-4">
                 <div>
@@ -361,6 +421,18 @@ export default function TemplateDetail() {
                   />
                 </div>
                 <div>
+                  <label className="label">Alias Name (unique within template)</label>
+                  <input
+                    {...register('alias_name')}
+                    type="text"
+                    className="input"
+                    placeholder="e.g., Premium Sweatshirt"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Optional: A unique name to identify this product in the template
+                  </p>
+                </div>
+                <div>
                   <label className="label">Sizes (comma-separated)</label>
                   <input
                     {...register('selected_sizes_string')}
@@ -368,6 +440,28 @@ export default function TemplateDetail() {
                     className="input"
                     placeholder="S, M, L, XL, 2XL"
                   />
+                </div>
+                <div>
+                  <label className="label">Pricing Mode</label>
+                  <select {...register('pricing_mode')} className="input" defaultValue="global">
+                    <option value="global">Global (same price for all)</option>
+                    <option value="per_size">Per Size</option>
+                    <option value="per_color">Per Color</option>
+                    <option value="per_config">Per Configuration (Size + Color)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Global Price</label>
+                  <input
+                    {...register('global_price', { valueAsNumber: true })}
+                    type="number"
+                    step="0.01"
+                    className="input"
+                    placeholder="29.99"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Default price (can be overridden per size/color/config)
+                  </p>
                 </div>
               </div>
               <div className="p-4 border-t flex space-x-3">
@@ -460,6 +554,117 @@ export default function TemplateDetail() {
           </div>
         </div>
       )}
+
+      {/* Edit Product Modal */}
+      {editingProduct && (() => {
+        const product = templateData?.products?.find((p: any) => p.id === editingProduct)
+        if (!product) return null
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b sticky top-0 bg-white">
+                <h2 className="text-xl font-semibold">Edit Product</h2>
+                <button onClick={() => setEditingProduct(null)}>
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+              <form
+                onSubmit={handleSubmit((data) => {
+                  const submitData: any = {
+                    ...data,
+                    selected_sizes: data.selected_sizes_string
+                      ? data.selected_sizes_string.split(',').map((s: string) => s.trim())
+                      : product.selected_sizes,
+                  }
+                  delete submitData.selected_sizes_string
+                  updateProductMutation.mutate({ productId: editingProduct, data: submitData })
+                })}
+              >
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="label">Product Name *</label>
+                    <input
+                      {...register('product_name', { defaultValue: product.product_name })}
+                      type="text"
+                      className="input"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Alias Name</label>
+                    <input
+                      {...register('alias_name', { defaultValue: product.alias_name })}
+                      type="text"
+                      className="input"
+                      placeholder="e.g., Premium Sweatshirt"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Optional: A unique name to identify this product in the template
+                    </p>
+                  </div>
+                  <div>
+                    <label className="label">Sizes (comma-separated)</label>
+                    <input
+                      {...register('selected_sizes_string', {
+                        defaultValue: product.selected_sizes?.join(', '),
+                      })}
+                      type="text"
+                      className="input"
+                      placeholder="S, M, L, XL, 2XL"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Pricing Mode</label>
+                    <select
+                      {...register('pricing_mode', { defaultValue: product.pricing_mode || 'global' })}
+                      className="input"
+                    >
+                      <option value="global">Global (same price for all)</option>
+                      <option value="per_size">Per Size</option>
+                      <option value="per_color">Per Color</option>
+                      <option value="per_config">Per Configuration (Size + Color)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Global Price</label>
+                    <input
+                      {...register('global_price', {
+                        valueAsNumber: true,
+                        defaultValue: product.global_price,
+                      })}
+                      type="number"
+                      step="0.01"
+                      className="input"
+                      placeholder="29.99"
+                    />
+                  </div>
+                </div>
+                <div className="p-4 border-t flex space-x-3 sticky bottom-0 bg-white">
+                  <button
+                    type="button"
+                    onClick={() => setEditingProduct(null)}
+                    className="flex-1 btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={updateProductMutation.isPending}
+                    className="flex-1 btn-primary"
+                  >
+                    {updateProductMutation.isPending ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Create Listing Modal */}
       {showCreateListing && (

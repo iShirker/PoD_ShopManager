@@ -258,6 +258,21 @@ def add_template_product(template_id):
         template_id=template.id
     ).scalar() or 0
 
+    # Validate alias_name uniqueness within template
+    alias_name = data.get('alias_name', '').strip()
+    if alias_name:
+        existing = TemplateProduct.query.filter_by(
+            template_id=template.id,
+            alias_name=alias_name
+        ).first()
+        if existing:
+            return jsonify({'error': f'Alias name "{alias_name}" already exists in this template'}), 400
+
+    # Handle selected_sizes - can be string (comma-separated) or list
+    selected_sizes = data.get('selected_sizes', [])
+    if isinstance(selected_sizes, str):
+        selected_sizes = [s.strip() for s in selected_sizes.split(',') if s.strip()]
+
     template_product = TemplateProduct(
         template_id=template.id,
         supplier_product_id=supplier_product_id,
@@ -265,7 +280,11 @@ def add_template_product(template_id):
         external_product_id=external_product_id,
         product_name=data.get('product_name', ''),
         product_type=data.get('product_type'),
-        selected_sizes=data.get('selected_sizes', []),
+        alias_name=alias_name or None,
+        selected_sizes=selected_sizes,
+        pricing_mode=data.get('pricing_mode', 'global'),
+        prices=data.get('prices', {}),
+        global_price=data.get('global_price'),
         price_override=data.get('price_override'),
         price_markup=data.get('price_markup'),
         display_order=max_order + 1,
@@ -316,9 +335,29 @@ def update_template_product(template_id, product_id):
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
+    # Validate alias_name uniqueness if being updated
+    if 'alias_name' in data:
+        alias_name = data.get('alias_name', '').strip()
+        if alias_name:
+            existing = TemplateProduct.query.filter_by(
+                template_id=template.id,
+                alias_name=alias_name
+            ).first()
+            if existing and existing.id != template_product.id:
+                return jsonify({'error': f'Alias name "{alias_name}" already exists in this template'}), 400
+        template_product.alias_name = alias_name or None
+
+    # Handle selected_sizes - can be string (comma-separated) or list
+    if 'selected_sizes' in data:
+        selected_sizes = data['selected_sizes']
+        if isinstance(selected_sizes, str):
+            selected_sizes = [s.strip() for s in selected_sizes.split(',') if s.strip()]
+        template_product.selected_sizes = selected_sizes
+
     # Updatable fields
     allowed_fields = [
-        'product_name', 'product_type', 'selected_sizes',
+        'product_name', 'product_type',
+        'pricing_mode', 'prices', 'global_price',
         'price_override', 'price_markup', 'display_order', 'is_active'
     ]
 
@@ -604,3 +643,149 @@ def preview_listing(template_id):
                 })
 
     return jsonify({'preview': preview})
+
+
+@templates_bp.route('/<int:template_id>/products/<int:product_id>/pricing', methods=['GET'])
+@jwt_required()
+def get_template_product_pricing(template_id, product_id):
+    """
+    Get pricing calculations for a template product.
+    Shows cost, price, and profit for each configuration.
+
+    Args:
+        template_id: Template ID
+        product_id: Template product ID
+
+    Query params:
+        view: 'config' (per size+color), 'size' (per size), or 'color' (per color)
+
+    Returns:
+        Pricing data organized by the requested view
+    """
+    user_id = get_jwt_identity()
+    view_mode = request.args.get('view', 'config')  # config, size, or color
+
+    template = ListingTemplate.query.filter_by(
+        id=template_id,
+        user_id=user_id
+    ).first()
+
+    if not template:
+        return jsonify({'error': 'Template not found'}), 404
+
+    template_product = TemplateProduct.query.filter_by(
+        id=product_id,
+        template_id=template.id
+    ).first()
+
+    if not template_product:
+        return jsonify({'error': 'Product not found'}), 404
+
+    # Get supplier product for cost calculation
+    supplier_product = None
+    if template_product.supplier_product_id:
+        supplier_product = SupplierProduct.query.get(template_product.supplier_product_id)
+
+    # Get base cost from supplier product
+    base_cost = supplier_product.base_price if supplier_product else 0
+    shipping_cost = supplier_product.shipping_first_item if supplier_product else 0
+    total_cost_per_item = base_cost + shipping_cost
+
+    # Get sizes and colors
+    sizes = template_product.selected_sizes or ['One Size']
+    colors = [c for c in template_product.colors.filter_by(is_active=True)]
+
+    if not sizes or not colors:
+        return jsonify({
+            'error': 'Product must have at least one size and one color configured'
+        }), 400
+
+    # Calculate pricing for each configuration
+    pricing_data = {
+        'product_id': template_product.id,
+        'product_name': template_product.product_name,
+        'alias_name': template_product.alias_name,
+        'pricing_mode': template_product.pricing_mode,
+        'base_cost': base_cost,
+        'shipping_cost': shipping_cost,
+        'total_cost': total_cost_per_item,
+        'view_mode': view_mode,
+        'data': {}
+    }
+
+    def get_price_for_config(size, color):
+        """Get the price for a specific size+color configuration."""
+        prices = template_product.prices or {}
+        
+        if template_product.pricing_mode == 'per_config':
+            config_key = f"{size}_{color.color_name}"
+            return prices.get(config_key) or template_product.global_price
+        elif template_product.pricing_mode == 'per_size':
+            return prices.get(size) or template_product.global_price
+        elif template_product.pricing_mode == 'per_color':
+            return prices.get(color.color_name) or template_product.global_price
+        else:  # global
+            return template_product.global_price
+
+    if view_mode == 'config':
+        # Per configuration (size + color)
+        for size in sizes:
+            for color in colors:
+                config_key = f"{size}_{color.color_name}"
+                price = get_price_for_config(size, color) or 0
+                profit = price - total_cost_per_item
+                
+                pricing_data['data'][config_key] = {
+                    'size': size,
+                    'color': color.color_name,
+                    'color_hex': color.color_hex,
+                    'cost': round(total_cost_per_item, 2),
+                    'price': round(price, 2),
+                    'profit': round(profit, 2),
+                    'profit_margin': round((profit / price * 100) if price > 0 else 0, 2)
+                }
+    
+    elif view_mode == 'size':
+        # Per size (aggregate across colors)
+        for size in sizes:
+            size_prices = []
+            for color in colors:
+                price = get_price_for_config(size, color)
+                if price:
+                    size_prices.append(price)
+            
+            avg_price = sum(size_prices) / len(size_prices) if size_prices else 0
+            profit = avg_price - total_cost_per_item
+            
+            pricing_data['data'][size] = {
+                'size': size,
+                'cost': round(total_cost_per_item, 2),
+                'price': round(avg_price, 2),
+                'profit': round(profit, 2),
+                'profit_margin': round((profit / avg_price * 100) if avg_price > 0 else 0, 2),
+                'config_count': len(colors)
+            }
+    
+    elif view_mode == 'color':
+        # Per color (aggregate across sizes)
+        for color in colors:
+            color_prices = []
+            for size in sizes:
+                price = get_price_for_config(size, color)
+                if price:
+                    color_prices.append(price)
+            
+            avg_price = sum(color_prices) / len(color_prices) if color_prices else 0
+            profit = avg_price - total_cost_per_item
+            
+            pricing_data['data'][color.color_name] = {
+                'color': color.color_name,
+                'color_hex': color.color_hex,
+                'cost': round(total_cost_per_item, 2),
+                'price': round(avg_price, 2),
+                'profit': round(profit, 2),
+                'profit_margin': round((profit / avg_price * 100) if avg_price > 0 else 0, 2),
+                'config_count': len(sizes)
+            }
+
+    return jsonify(pricing_data)

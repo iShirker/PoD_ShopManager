@@ -683,7 +683,9 @@ def get_supplier_catalog(connection_id):
                         product.get('categoryName') or
                         product_type_uid  # Use productTypeUid as fallback category
                     )
-                    if category and product_category != category:
+                    # Filter by category: if category is specified, only include matching products
+                    # If category is None/empty, show all products
+                    if category is not None and product_category != category:
                         continue
                     
                     # Add to categories set (will be used for dropdown)
@@ -873,7 +875,8 @@ def get_supplier_catalog(connection_id):
                             continue
                     
                     blueprint_category = blueprint.get('category')
-                    if category and blueprint_category != category:
+                    # Filter by category: if category is specified, only include matching products
+                    if category is not None and blueprint_category != category:
                         continue
                     
                     if blueprint_category:
@@ -1049,7 +1052,9 @@ def get_supplier_catalog(connection_id):
                             search_lower not in (product_type_display or '').lower()):
                             continue
                     
-                    if category and product_category != category:
+                    # Filter by category: if category is specified, only include matching products
+                    # If category is None/empty, show all products
+                    if category is not None and product_category != category:
                         continue
                     
                     if product_category:

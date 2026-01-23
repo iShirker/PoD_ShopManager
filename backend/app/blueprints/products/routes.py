@@ -3,7 +3,7 @@ Product comparison and switching routes.
 Handles supplier comparison and product migration between suppliers.
 """
 from datetime import datetime
-from flask import request, jsonify
+from flask import request, jsonify, make_response
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.blueprints.products import products_bp
@@ -622,15 +622,25 @@ def get_supplier_catalog(connection_id):
             elif connection.supplier_type == SupplierType.PRINTIFY.value:
                 from app.services.suppliers.printify import PrintifyService
                 service = PrintifyService(connection.api_key)
-                blueprints = service.get_blueprints()
+                blueprints_response = service.get_blueprints()
+                
+                # Handle different response formats
+                blueprints = []
+                if isinstance(blueprints_response, list):
+                    blueprints = blueprints_response
+                elif isinstance(blueprints_response, dict):
+                    blueprints = blueprints_response.get('blueprints', []) or blueprints_response.get('data', []) or blueprints_response.get('items', [])
                 
                 # Convert blueprints to catalog format
                 catalog_products = []
                 all_categories = set()
                 
                 for blueprint in blueprints:
+                    if not isinstance(blueprint, dict):
+                        continue
+                        
                     if search:
-                        name = blueprint.get('title', '')
+                        name = blueprint.get('title', '') or blueprint.get('name', '')
                         if search.lower() not in name.lower():
                             continue
                     
@@ -641,22 +651,31 @@ def get_supplier_catalog(connection_id):
                     if blueprint_category:
                         all_categories.add(blueprint_category)
                     
+                    # Extract thumbnail URL from images
+                    thumbnail_url = None
+                    images_list = blueprint.get('images', []) or []
+                    if images_list:
+                        if isinstance(images_list[0], str):
+                            thumbnail_url = images_list[0]
+                        elif isinstance(images_list[0], dict):
+                            thumbnail_url = images_list[0].get('url') or images_list[0].get('src') or images_list[0].get('imageUrl')
+                    
                     catalog_products.append({
                         'id': None,
                         'supplier_connection_id': connection.id,
                         'supplier_product_id': str(blueprint.get('id', '')),
                         'blueprint_id': str(blueprint.get('id', '')),
-                        'name': blueprint.get('title', ''),
+                        'name': blueprint.get('title', '') or blueprint.get('name', ''),
                         'description': blueprint.get('description'),
-                        'product_type': blueprint.get('title', ''),
+                        'product_type': blueprint.get('model') or blueprint.get('title', ''),
                         'brand': blueprint.get('brand'),
                         'category': blueprint_category,
                         'base_price': None,  # Pricing varies by provider
                         'currency': 'USD',
                         'available_sizes': [],
                         'available_colors': [],
-                        'thumbnail_url': blueprint.get('images', [{}])[0].get('url') if blueprint.get('images') else None,
-                        'images': blueprint.get('images', []),
+                        'thumbnail_url': thumbnail_url,
+                        'images': images_list,
                         'is_active': True
                     })
                 
@@ -687,26 +706,48 @@ def get_supplier_catalog(connection_id):
                 })
             elif connection.supplier_type == SupplierType.PRINTFUL.value:
                 from app.services.suppliers.printful import PrintfulService
+                if not connection.access_token:
+                    raise ValueError("Printful access token is missing")
+                    
                 service = PrintfulService(connection.access_token)
                 products_response = service.get_products()
                 
-                products = products_response if isinstance(products_response, list) else products_response.get('result', [])
+                # Handle different response formats
+                products = []
+                if isinstance(products_response, list):
+                    products = products_response
+                elif isinstance(products_response, dict):
+                    products = products_response.get('result', []) or products_response.get('data', []) or products_response.get('items', [])
                 
                 catalog_products = []
                 all_categories = set()
                 
                 for product in products:
+                    if not isinstance(product, dict):
+                        continue
+                        
                     if search:
                         name = product.get('name', '')
                         if search.lower() not in name.lower():
                             continue
                     
-                    product_category = product.get('type')
+                    product_category = product.get('type') or product.get('category')
                     if category and product_category != category:
                         continue
                     
                     if product_category:
                         all_categories.add(product_category)
+                    
+                    # Extract thumbnail URL
+                    thumbnail_url = None
+                    images_list = product.get('images', []) or []
+                    if product.get('image'):
+                        thumbnail_url = product.get('image')
+                    elif images_list:
+                        if isinstance(images_list[0], str):
+                            thumbnail_url = images_list[0]
+                        elif isinstance(images_list[0], dict):
+                            thumbnail_url = images_list[0].get('url') or images_list[0].get('src') or images_list[0].get('image')
                     
                     catalog_products.append({
                         'id': None,
@@ -721,8 +762,8 @@ def get_supplier_catalog(connection_id):
                         'currency': 'USD',
                         'available_sizes': [],
                         'available_colors': [],
-                        'thumbnail_url': product.get('image', ''),
-                        'images': product.get('images', []),
+                        'thumbnail_url': thumbnail_url,
+                        'images': images_list,
                         'is_active': True
                     })
                 
@@ -751,8 +792,17 @@ def get_supplier_catalog(connection_id):
                     'needs_sync': True
                 })
         except Exception as e:
-            current_app.logger.error(f"Error fetching catalog from API: {str(e)}")
-            # Fall through to database query (might be empty)
+            current_app.logger.error(f"Error fetching catalog from API: {str(e)}", exc_info=True)
+            # Return error with CORS headers
+            from flask import make_response
+            response = make_response(jsonify({
+                'error': f'Failed to fetch catalog from {connection.supplier_type} API',
+                'details': str(e)
+            }), 500)
+            # Add CORS headers
+            response.headers['Access-Control-Allow-Origin'] = current_app.config.get('FRONTEND_URL', '*')
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            return response
 
     # Use database products
     query = SupplierProduct.query.filter_by(

@@ -56,16 +56,33 @@ export default function SupplierLoginModal({ supplier, onClose, onApiKeySuccess 
       onClose()
     } catch (error: any) {
       let errorMsg = `Failed to connect to ${config.name}`
-      if (error.response?.data) {
+      
+      // Handle network errors (no response from server)
+      if (!error.response) {
+        if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+          errorMsg = 'Connection timeout - please check your internet connection and try again'
+        } else if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+          errorMsg = 'Network error - cannot reach server. Please check if the backend is running and accessible.'
+        } else if (error.message) {
+          errorMsg = `Network error: ${error.message}`
+        } else {
+          errorMsg = 'Network error - please check your connection and try again'
+        }
+      } else if (error.response?.data) {
+        // Handle API response errors
         const data = error.response.data
         if (data.details) {
           errorMsg = `${data.error || errorMsg}: ${data.details}`
         } else if (data.error) {
           errorMsg = data.error
+        } else {
+          errorMsg = `Server error (${error.response.status}): ${error.response.statusText}`
         }
       } else if (error.message) {
         errorMsg = error.message
       }
+      
+      console.error('Supplier connection error:', error)
       toast.error(errorMsg)
     } finally {
       setIsLoading(false)

@@ -47,7 +47,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
 
   // Add product mutation
   const addProductMutation = useMutation({
-    mutationFn: (data: { supplier_connection_id: number; supplier_product_id: number; product_name?: string }) =>
+    mutationFn: (data: { supplier_connection_id: number; supplier_product_id: number | string; supplier_product_external_id?: string; product_name?: string }) =>
       productsApi.addUserProduct(data),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['user-products'] })

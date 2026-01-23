@@ -551,7 +551,13 @@ def get_supplier_catalog(connection_id):
                 # Log for debugging
                 current_app.logger.info(f"Gelato API response type: {type(products_response)}, products count: {len(products) if isinstance(products, list) else 'N/A'}")
                 if products and len(products) > 0:
-                    current_app.logger.info(f"Sample Gelato product keys: {list(products[0].keys()) if isinstance(products[0], dict) else 'Not a dict'}")
+                    sample_product = products[0]
+                    if isinstance(sample_product, dict):
+                        current_app.logger.info(f"Sample Gelato product keys: {list(sample_product.keys())}")
+                        # Log a sample product structure (first 1000 chars to avoid huge logs)
+                        import json
+                        sample_str = json.dumps(sample_product, indent=2, default=str)[:1000]
+                        current_app.logger.info(f"Sample Gelato product structure: {sample_str}...")
                 
                 # Convert to SupplierProduct format
                 catalog_products = []
@@ -564,41 +570,76 @@ def get_supplier_catalog(connection_id):
                     if not isinstance(product, dict):
                         current_app.logger.warning(f"Skipping non-dict product: {type(product)}")
                         continue
+                    
+                    # Gelato v3 API structure: products have productUid, productNameUid, productTypeUid
+                    # We may need to fetch detailed product info, but for now try to extract what we can
+                    product_uid = product.get('productUid') or product.get('uid') or product.get('id')
+                    
+                    # Check for nested product data
+                    product_data = product.get('product') or product.get('productData') or product.get('data') or product
+                    
                     # Apply search filter
                     if search:
-                        name = product.get('title') or product.get('name') or ''
-                        product_type = product.get('productType') or product.get('type') or ''
-                        brand = product.get('brand') or ''
+                        # Try to get name from various places
+                        name = (
+                            product_data.get('title') or 
+                            product_data.get('name') or 
+                            product_data.get('productName') or
+                            product.get('productName') or
+                            str(product_uid) if product_uid else ''
+                        )
+                        product_type = (
+                            product_data.get('productType') or 
+                            product_data.get('type') or
+                            product_data.get('product_type') or
+                            product.get('productType') or
+                            ''
+                        )
+                        brand = product_data.get('brand') or product.get('brand') or ''
                         if search.lower() not in name.lower() and search.lower() not in product_type.lower() and search.lower() not in brand.lower():
                             continue
                     
                     # Apply category filter
-                    product_category = product.get('category')
+                    product_category = product_data.get('category') or product.get('category')
                     if category and product_category != category:
                         continue
                     
                     if product_category:
                         all_categories.add(product_category)
                     
-                    # Extract thumbnail URL - handle various formats
+                    # Extract thumbnail URL - handle various formats, check both product and product_data
                     thumbnail_url = None
-                    images_list = product.get('images', []) or []
+                    images_list = product_data.get('images', []) or product.get('images', []) or []
                     
-                    # Try different image field names
-                    if product.get('imageUrl'):
-                        thumbnail_url = product.get('imageUrl')
-                    elif product.get('thumbnailUrl'):
-                        thumbnail_url = product.get('thumbnailUrl')
-                    elif product.get('image'):
-                        thumbnail_url = product.get('image')
-                    elif product.get('thumbnail'):
-                        thumbnail_url = product.get('thumbnail')
-                    elif product.get('image_url'):
-                        thumbnail_url = product.get('image_url')
-                    elif product.get('thumbnail_url'):
-                        thumbnail_url = product.get('thumbnail_url')
+                    # Try different image field names in product_data first, then product
+                    for source in [product_data, product]:
+                        if source.get('imageUrl'):
+                            thumbnail_url = source.get('imageUrl')
+                            break
+                        elif source.get('thumbnailUrl'):
+                            thumbnail_url = source.get('thumbnailUrl')
+                            break
+                        elif source.get('image'):
+                            img_val = source.get('image')
+                            if isinstance(img_val, str):
+                                thumbnail_url = img_val
+                                break
+                            elif isinstance(img_val, dict):
+                                thumbnail_url = img_val.get('url') or img_val.get('src') or img_val.get('imageUrl')
+                                if thumbnail_url:
+                                    break
+                        elif source.get('thumbnail'):
+                            thumbnail_url = source.get('thumbnail')
+                            break
+                        elif source.get('image_url'):
+                            thumbnail_url = source.get('image_url')
+                            break
+                        elif source.get('thumbnail_url'):
+                            thumbnail_url = source.get('thumbnail_url')
+                            break
+                    
                     # If images is an array, get first image
-                    elif images_list and len(images_list) > 0:
+                    if not thumbnail_url and images_list and len(images_list) > 0:
                         first_image = images_list[0]
                         if isinstance(first_image, str):
                             thumbnail_url = first_image
@@ -611,34 +652,48 @@ def get_supplier_catalog(connection_id):
                                 first_image.get('image') or
                                 first_image.get('thumbnail')
                             )
+                    
                     # Check for nested image structures (Gelato might have images in product.image or product.media)
                     if not thumbnail_url:
-                        if product.get('media') and isinstance(product.get('media'), dict):
-                            media = product.get('media')
-                            thumbnail_url = media.get('imageUrl') or media.get('thumbnailUrl') or media.get('url')
-                        elif product.get('image') and isinstance(product.get('image'), dict):
-                            img_obj = product.get('image')
-                            thumbnail_url = img_obj.get('url') or img_obj.get('src') or img_obj.get('imageUrl')
+                        for source in [product_data, product]:
+                            if source.get('media') and isinstance(source.get('media'), dict):
+                                media = source.get('media')
+                                thumbnail_url = media.get('imageUrl') or media.get('thumbnailUrl') or media.get('url')
+                                if thumbnail_url:
+                                    break
+                            elif source.get('image') and isinstance(source.get('image'), dict):
+                                img_obj = source.get('image')
+                                thumbnail_url = img_obj.get('url') or img_obj.get('src') or img_obj.get('imageUrl')
+                                if thumbnail_url:
+                                    break
                     
-                    # Extract name - try multiple fields
+                    # Extract name - try multiple fields from product_data first
                     product_name = (
-                        product.get('title') or 
-                        product.get('name') or 
+                        product_data.get('title') or 
+                        product_data.get('name') or 
+                        product_data.get('productName') or
                         product.get('productName') or
-                        product.get('product_name') or
-                        ''
+                        product.get('title') or 
+                        product.get('name') or
+                        f"Product {product_uid}" if product_uid else 'Unknown Product'
                     )
                     
                     # Extract description
                     product_description = (
+                        product_data.get('description') or
+                        product_data.get('desc') or
+                        product_data.get('productDescription') or
                         product.get('description') or
                         product.get('desc') or
-                        product.get('productDescription') or
                         None
                     )
                     
                     # Extract product type
                     product_type_value = (
+                        product_data.get('productType') or 
+                        product_data.get('type') or
+                        product_data.get('product_type') or
+                        product_data.get('model') or
                         product.get('productType') or 
                         product.get('type') or
                         product.get('product_type') or
@@ -648,16 +703,16 @@ def get_supplier_catalog(connection_id):
                     catalog_products.append({
                         'id': None,  # Not in database yet
                         'supplier_connection_id': connection.id,
-                        'supplier_product_id': str(product.get('uid') or product.get('id') or product.get('productUid') or ''),
+                        'supplier_product_id': str(product_uid or product.get('id') or ''),
                         'name': product_name,
                         'description': _strip_html(product_description) if product_description else None,
                         'product_type': product_type_value,
-                        'brand': product.get('brand'),
+                        'brand': product_data.get('brand') or product.get('brand'),
                         'category': product_category,
-                        'base_price': product.get('price') or product.get('basePrice') or product.get('base_price'),
-                        'currency': product.get('currency', 'USD'),
-                        'available_sizes': product.get('sizes', []) or product.get('availableSizes', []) or product.get('available_sizes', []),
-                        'available_colors': product.get('colors', []) or product.get('availableColors', []) or product.get('available_colors', []),
+                        'base_price': product_data.get('price') or product_data.get('basePrice') or product_data.get('base_price') or product.get('price') or product.get('basePrice'),
+                        'currency': product_data.get('currency') or product.get('currency', 'USD'),
+                        'available_sizes': product_data.get('sizes', []) or product_data.get('availableSizes', []) or product_data.get('available_sizes', []) or product.get('sizes', []) or product.get('availableSizes', []),
+                        'available_colors': product_data.get('colors', []) or product_data.get('availableColors', []) or product_data.get('available_colors', []) or product.get('colors', []) or product.get('availableColors', []),
                         'thumbnail_url': thumbnail_url,
                         'images': images_list,
                         'is_active': True

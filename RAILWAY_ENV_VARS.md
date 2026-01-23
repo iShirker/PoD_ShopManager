@@ -1,4 +1,16 @@
-# Railway Environment Variables for Backend
+# Railway Environment Variables
+
+This document lists all environment variables that should be configured in Railway for both frontend and backend services.
+
+## Frontend Environment Variables
+
+### Required for Production
+- **VITE_API_URL** - Backend API URL (e.g., `https://podshopmanagerbackend-production.up.railway.app/api`)
+  - **Important**: This must be set in Railway for the frontend service
+  - Without this, the frontend will try to use `/api` which only works in development with Vite proxy
+  - Set this in Railway: Frontend Service → Variables → Add `VITE_API_URL`
+
+## Backend Environment Variables
 
 This document lists all environment variables that should be configured in Railway for the backend service.
 

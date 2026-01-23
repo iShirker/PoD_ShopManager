@@ -1084,8 +1084,19 @@ def get_supplier_catalog(connection_id):
                 catalog_products = []
                 all_categories = set()
                 
-                current_app.logger.info(f"Printful: Processing {len(products)} products, category filter: {category}")
+                # First pass: Collect ALL categories from ALL products (before filtering)
+                for product in products:
+                    if not isinstance(product, dict):
+                        continue
+                    product_category = product.get('type_name') or product.get('category') or product.get('type')
+                    if product_category:
+                        normalized_cat = product_category.strip() if product_category else None
+                        if normalized_cat:
+                            all_categories.add(normalized_cat)
                 
+                current_app.logger.info(f"Printful: Processing {len(products)} products, category filter: {category}, found {len(all_categories)} categories")
+                
+                # Second pass: Filter products and build catalog
                 for product in products:
                     if not isinstance(product, dict):
                         continue
@@ -1139,16 +1150,15 @@ def get_supplier_catalog(connection_id):
                         normalized_product_category = None
                     
                     # Filter by category: if category is specified, only include matching products
+                    # Note: Categories were already collected in first pass above
                     if category is not None:
                         # Compare normalized values (case-insensitive for better matching)
-                        if normalized_product_category and normalized_product_category.lower() != category.lower():
+                        if normalized_product_category:
+                            if normalized_product_category.lower() != category.lower():
+                                continue
+                        else:
+                            # If product has no category but we're filtering by a specific category, skip it
                             continue
-                        elif not normalized_product_category:
-                            # If product has no category but we're filtering by category, skip it
-                            continue
-                    
-                    if normalized_product_category:
-                        all_categories.add(normalized_product_category)
                     
                     # Extract thumbnail URL
                     thumbnail_url = None

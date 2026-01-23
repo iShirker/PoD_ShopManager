@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { suppliersApi } from '../lib/api'
+import { suppliersApi, authApi } from '../lib/api'
 import { cn } from '../lib/utils'
 import {
   Truck, Plus, Loader2, RefreshCw, ExternalLink, MoreVertical, Trash2,
@@ -38,7 +38,7 @@ const AVAILABLE_SUPPLIERS = [
     color: 'bg-blue-100 text-blue-600',
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-200',
-    authType: 'api_key' as const,
+    authType: 'oauth' as const,
   },
 ]
 
@@ -120,8 +120,23 @@ export default function Suppliers() {
     },
   })
 
-  const handleConnectSupplierClick = (supplierId: string) => {
-    if (supplierId === 'printify' || supplierId === 'printful' || supplierId === 'gelato') {
+  const handleConnectSupplierClick = async (supplierId: string) => {
+    const supplier = AVAILABLE_SUPPLIERS.find(s => s.id === supplierId)
+    
+    if (supplier?.authType === 'oauth' && supplierId === 'printful') {
+      // Use OAuth flow for Printful
+      try {
+        const response = await authApi.getPrintfulAuthUrl()
+        if (response.data?.auth_url) {
+          window.location.href = response.data.auth_url
+        } else {
+          toast.error('Failed to get authorization URL')
+        }
+      } catch (error: any) {
+        toast.error(error.response?.data?.error || 'Failed to start OAuth flow')
+      }
+    } else if (supplierId === 'printify' || supplierId === 'printful' || supplierId === 'gelato') {
+      // Use API key flow for other suppliers
       setSelectedSupplier(supplierId)
       setShowLoginModal(true)
     }

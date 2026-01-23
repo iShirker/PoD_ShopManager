@@ -548,11 +548,22 @@ def get_supplier_catalog(connection_id):
                     (products_response if isinstance(products_response, list) else [])
                 )
                 
+                # Log for debugging
+                current_app.logger.info(f"Gelato API response type: {type(products_response)}, products count: {len(products) if isinstance(products, list) else 'N/A'}")
+                if products and len(products) > 0:
+                    current_app.logger.info(f"Sample Gelato product keys: {list(products[0].keys()) if isinstance(products[0], dict) else 'Not a dict'}")
+                
                 # Convert to SupplierProduct format
                 catalog_products = []
                 all_categories = set()
                 
+                if not products or len(products) == 0:
+                    current_app.logger.warning(f"No Gelato products found in response. Response keys: {list(products_response.keys()) if isinstance(products_response, dict) else 'Not a dict'}")
+                
                 for product in products:
+                    if not isinstance(product, dict):
+                        current_app.logger.warning(f"Skipping non-dict product: {type(product)}")
+                        continue
                     # Apply search filter
                     if search:
                         name = product.get('title') or product.get('name') or ''
@@ -609,19 +620,44 @@ def get_supplier_catalog(connection_id):
                             img_obj = product.get('image')
                             thumbnail_url = img_obj.get('url') or img_obj.get('src') or img_obj.get('imageUrl')
                     
+                    # Extract name - try multiple fields
+                    product_name = (
+                        product.get('title') or 
+                        product.get('name') or 
+                        product.get('productName') or
+                        product.get('product_name') or
+                        ''
+                    )
+                    
+                    # Extract description
+                    product_description = (
+                        product.get('description') or
+                        product.get('desc') or
+                        product.get('productDescription') or
+                        None
+                    )
+                    
+                    # Extract product type
+                    product_type_value = (
+                        product.get('productType') or 
+                        product.get('type') or
+                        product.get('product_type') or
+                        product.get('model')
+                    )
+                    
                     catalog_products.append({
                         'id': None,  # Not in database yet
                         'supplier_connection_id': connection.id,
-                        'supplier_product_id': str(product.get('uid') or product.get('id') or ''),
-                        'name': product.get('title') or product.get('name') or '',
-                        'description': _strip_html(product.get('description')) if product.get('description') else None,
-                        'product_type': product.get('productType') or product.get('type'),
+                        'supplier_product_id': str(product.get('uid') or product.get('id') or product.get('productUid') or ''),
+                        'name': product_name,
+                        'description': _strip_html(product_description) if product_description else None,
+                        'product_type': product_type_value,
                         'brand': product.get('brand'),
                         'category': product_category,
-                        'base_price': product.get('price') or product.get('basePrice'),
+                        'base_price': product.get('price') or product.get('basePrice') or product.get('base_price'),
                         'currency': product.get('currency', 'USD'),
-                        'available_sizes': product.get('sizes', []) or product.get('availableSizes', []),
-                        'available_colors': product.get('colors', []) or product.get('availableColors', []),
+                        'available_sizes': product.get('sizes', []) or product.get('availableSizes', []) or product.get('available_sizes', []),
+                        'available_colors': product.get('colors', []) or product.get('availableColors', []) or product.get('available_colors', []),
                         'thumbnail_url': thumbnail_url,
                         'images': images_list,
                         'is_active': True
@@ -699,7 +735,7 @@ def get_supplier_catalog(connection_id):
                         'supplier_product_id': str(blueprint.get('id', '')),
                         'blueprint_id': str(blueprint.get('id', '')),
                         'name': blueprint.get('title', '') or blueprint.get('name', ''),
-                        'description': _strip_html(blueprint.get('description')) if blueprint.get('description') else None,
+                        'description': blueprint.get('description'),  # Keep HTML for Printify
                         'product_type': blueprint.get('model') or blueprint.get('title', ''),
                         'brand': blueprint.get('brand'),
                         'category': blueprint_category,
@@ -741,22 +777,34 @@ def get_supplier_catalog(connection_id):
                 from app.services.suppliers.printful import PrintfulService
                 if not connection.access_token:
                     raise ValueError("Printful access token is missing")
-                    
-                service = PrintfulService(connection.access_token)
-                products_response = service.get_products()
+                
+                try:
+                    service = PrintfulService(connection.access_token)
+                    products_response = service.get_products()
+                    current_app.logger.info(f"Printful API response type: {type(products_response)}, is None: {products_response is None}")
+                    if isinstance(products_response, dict):
+                        current_app.logger.info(f"Printful response keys: {list(products_response.keys())}")
+                except Exception as api_error:
+                    current_app.logger.error(f"Printful API call failed: {str(api_error)}", exc_info=True)
+                    raise
                 
                 # Handle different response formats
                 # Note: PrintfulService._request already extracts 'result', so get_products() should return list directly
                 products = []
                 if products_response is None:
+                    current_app.logger.warning("Printful products_response is None")
                     products = []
                 elif isinstance(products_response, list):
                     products = products_response
+                    current_app.logger.info(f"Printful returned list with {len(products)} items")
                 elif isinstance(products_response, dict):
                     # Double-check in case result wasn't extracted
                     products = products_response.get('result', []) or products_response.get('data', []) or products_response.get('items', [])
+                    current_app.logger.info(f"Printful returned dict, extracted {len(products)} products")
+                    if not products:
+                        current_app.logger.warning(f"Printful dict had no products. Keys: {list(products_response.keys())}")
                 else:
-                    current_app.logger.warning(f"Unexpected Printful products response type: {type(products_response)}")
+                    current_app.logger.warning(f"Unexpected Printful products response type: {type(products_response)}, value: {str(products_response)[:200]}")
                     products = []
                 
                 catalog_products = []

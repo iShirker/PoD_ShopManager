@@ -466,7 +466,10 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                   {selectedProduct.description && (
                     <div className="mb-4">
                       <h4 className="font-medium text-gray-900 mb-2">Description</h4>
-                      <p className="text-sm text-gray-600 whitespace-pre-wrap">{selectedProduct.description}</p>
+                      <div 
+                        className="text-sm text-gray-600 prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ __html: selectedProduct.description }}
+                      />
                     </div>
                   )}
 

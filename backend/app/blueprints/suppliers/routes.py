@@ -117,6 +117,13 @@ def connect_supplier(supplier_type):
 
     if not api_key:
         return jsonify({'error': 'API key is required'}), 400
+    
+    # Log token preview for debugging (first 10 and last 10 chars)
+    if len(api_key) > 20:
+        token_preview = f"{api_key[:10]}...{api_key[-10:]}"
+    else:
+        token_preview = "***"
+    current_app.logger.info(f"Connecting {supplier_type} with token: {token_preview}")
 
     # Validate connection based on supplier type
     try:

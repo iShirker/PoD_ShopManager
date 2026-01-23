@@ -18,9 +18,13 @@ class PrintifyService:
         Args:
             api_token: Printify API token
         """
-        self.api_token = api_token
+        # Clean and validate token
+        self.api_token = api_token.strip() if api_token else ''
+        if not self.api_token:
+            raise ValueError('Printify API token is required')
+        
         self.headers = {
-            'Authorization': f'Bearer {api_token}',
+            'Authorization': f'Bearer {self.api_token}',
             'Content-Type': 'application/json',
             'User-Agent': 'POD-ShopManager/1.0'
         }
@@ -38,9 +42,33 @@ class PrintifyService:
             Response JSON or raises exception
         """
         url = f"{self.BASE_URL}/{endpoint}"
-        response = requests.request(method, url, headers=self.headers, **kwargs)
-        response.raise_for_status()
-        return response.json()
+        
+        # Log request for debugging (without exposing full token)
+        token_preview = f"{self.api_token[:20]}...{self.api_token[-10:]}" if len(self.api_token) > 30 else "***"
+        
+        try:
+            response = requests.request(method, url, headers=self.headers, timeout=30, **kwargs)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            # Log more details for 401 errors
+            if e.response.status_code == 401:
+                error_detail = None
+                try:
+                    error_detail = e.response.json()
+                except:
+                    error_detail = e.response.text[:200]
+                
+                # Check if token might be invalid
+                if not self.api_token or len(self.api_token) < 50:
+                    raise ValueError(f'Invalid token format (too short). Token preview: {token_preview}')
+                
+                raise requests.exceptions.HTTPError(
+                    f'401 Unauthorized - Token may be invalid or expired. '
+                    f'Error: {error_detail}',
+                    response=e.response
+                )
+            raise
 
     def get_shops(self):
         """Get all shops associated with the account."""

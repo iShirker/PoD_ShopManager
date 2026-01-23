@@ -3,10 +3,10 @@ import { useAuthStore } from '../store/authStore'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
-// Log API URL for debugging (only in development)
-if (import.meta.env.DEV) {
-  console.log('API Base URL:', API_BASE_URL)
-}
+// Log API URL for debugging (always log to help diagnose production issues)
+console.log('API Base URL:', API_BASE_URL)
+console.log('VITE_API_URL env var:', import.meta.env.VITE_API_URL || '(not set)')
+console.log('Environment mode:', import.meta.env.MODE)
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -33,6 +33,19 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
+
+    // Log network errors for debugging
+    if (!error.response) {
+      console.error('Network Error Details:', {
+        message: error.message,
+        code: error.code,
+        config: {
+          url: error.config?.url,
+          baseURL: error.config?.baseURL,
+          method: error.config?.method,
+        }
+      })
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true

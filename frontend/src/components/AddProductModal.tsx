@@ -68,9 +68,14 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
   const handleAddProduct = (supplierProduct: any) => {
     if (!selectedConnectionId) return
 
+    // If product has no database ID (fetched from API), use supplier_product_id
+    // Otherwise use the database ID
+    const productId = supplierProduct.id || supplierProduct.supplier_product_id
+
     addProductMutation.mutate({
       supplier_connection_id: selectedConnectionId,
-      supplier_product_id: supplierProduct.id,
+      supplier_product_id: productId,
+      supplier_product_external_id: supplierProduct.supplier_product_id, // External ID from supplier
       product_name: supplierProduct.name,
     })
   }

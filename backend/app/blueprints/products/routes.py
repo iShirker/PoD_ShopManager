@@ -469,6 +469,7 @@ def get_user_products():
 def get_supplier_catalog(connection_id):
     """
     Get supplier catalog with categories and search.
+    If no products are in database, fetches directly from API.
 
     Args:
         connection_id: Supplier connection ID
@@ -499,6 +500,237 @@ def get_supplier_catalog(connection_id):
     search = request.args.get('search', '')
     category = request.args.get('category', '')
 
+    # Check if products exist in database
+    product_count = SupplierProduct.query.filter_by(
+        supplier_connection_id=connection.id,
+        is_active=True
+    ).count()
+
+    # If no products in database, fetch from API directly
+    if product_count == 0:
+        try:
+            if connection.supplier_type == SupplierType.GELATO.value:
+                from app.services.suppliers.gelato import GelatoService
+                service = GelatoService(
+                    api_key=connection.api_key,
+                    access_token=connection.access_token
+                )
+                # Fetch products from API
+                offset = (page - 1) * per_page
+                products_response = service.get_products(
+                    store_id=connection.store_id,
+                    limit=per_page,
+                    offset=offset
+                )
+                
+                # Parse Gelato products
+                products = (
+                    products_response.get('products', []) or
+                    products_response.get('data', []) or
+                    products_response.get('items', []) or
+                    (products_response if isinstance(products_response, list) else [])
+                )
+                
+                # Convert to SupplierProduct format
+                catalog_products = []
+                all_categories = set()
+                
+                for product in products:
+                    # Apply search filter
+                    if search:
+                        name = product.get('title') or product.get('name') or ''
+                        product_type = product.get('productType') or product.get('type') or ''
+                        brand = product.get('brand') or ''
+                        if search.lower() not in name.lower() and search.lower() not in product_type.lower() and search.lower() not in brand.lower():
+                            continue
+                    
+                    # Apply category filter
+                    product_category = product.get('category')
+                    if category and product_category != category:
+                        continue
+                    
+                    if product_category:
+                        all_categories.add(product_category)
+                    
+                    catalog_products.append({
+                        'id': None,  # Not in database yet
+                        'supplier_connection_id': connection.id,
+                        'supplier_product_id': str(product.get('uid') or product.get('id') or ''),
+                        'name': product.get('title') or product.get('name') or '',
+                        'description': product.get('description'),
+                        'product_type': product.get('productType') or product.get('type'),
+                        'brand': product.get('brand'),
+                        'category': product_category,
+                        'base_price': product.get('price') or product.get('basePrice'),
+                        'currency': product.get('currency', 'USD'),
+                        'available_sizes': product.get('sizes', []) or product.get('availableSizes', []),
+                        'available_colors': product.get('colors', []) or product.get('availableColors', []),
+                        'thumbnail_url': product.get('imageUrl') or product.get('thumbnailUrl') or product.get('image'),
+                        'images': product.get('images', []) or [],
+                        'is_active': True
+                    })
+                
+                # Simple pagination for API results
+                total = len(catalog_products)  # Approximate, API doesn't always return total
+                start_idx = 0
+                end_idx = per_page
+                
+                return jsonify({
+                    'products': catalog_products[start_idx:end_idx],
+                    'categories': sorted(all_categories),
+                    'pagination': {
+                        'page': page,
+                        'per_page': per_page,
+                        'total': total,
+                        'pages': (total + per_page - 1) // per_page if total > 0 else 1,
+                        'has_next': end_idx < total,
+                        'has_prev': page > 1
+                    },
+                    'supplier': {
+                        'type': connection.supplier_type,
+                        'name': connection.account_name or connection.account_email or connection.supplier_type,
+                        'account_name': connection.account_name,
+                        'account_email': connection.account_email,
+                        'account_id': connection.account_id
+                    },
+                    'needs_sync': True  # Indicate that products should be synced
+                })
+            elif connection.supplier_type == SupplierType.PRINTIFY.value:
+                from app.services.suppliers.printify import PrintifyService
+                service = PrintifyService(connection.api_key)
+                blueprints = service.get_blueprints()
+                
+                # Convert blueprints to catalog format
+                catalog_products = []
+                all_categories = set()
+                
+                for blueprint in blueprints:
+                    if search:
+                        name = blueprint.get('title', '')
+                        if search.lower() not in name.lower():
+                            continue
+                    
+                    blueprint_category = blueprint.get('category')
+                    if category and blueprint_category != category:
+                        continue
+                    
+                    if blueprint_category:
+                        all_categories.add(blueprint_category)
+                    
+                    catalog_products.append({
+                        'id': None,
+                        'supplier_connection_id': connection.id,
+                        'supplier_product_id': str(blueprint.get('id', '')),
+                        'blueprint_id': str(blueprint.get('id', '')),
+                        'name': blueprint.get('title', ''),
+                        'description': blueprint.get('description'),
+                        'product_type': blueprint.get('title', ''),
+                        'brand': blueprint.get('brand'),
+                        'category': blueprint_category,
+                        'base_price': None,  # Pricing varies by provider
+                        'currency': 'USD',
+                        'available_sizes': [],
+                        'available_colors': [],
+                        'thumbnail_url': blueprint.get('images', [{}])[0].get('url') if blueprint.get('images') else None,
+                        'images': blueprint.get('images', []),
+                        'is_active': True
+                    })
+                
+                # Paginate
+                start_idx = (page - 1) * per_page
+                end_idx = start_idx + per_page
+                total = len(catalog_products)
+                
+                return jsonify({
+                    'products': catalog_products[start_idx:end_idx],
+                    'categories': sorted(all_categories),
+                    'pagination': {
+                        'page': page,
+                        'per_page': per_page,
+                        'total': total,
+                        'pages': (total + per_page - 1) // per_page if total > 0 else 1,
+                        'has_next': end_idx < total,
+                        'has_prev': page > 1
+                    },
+                    'supplier': {
+                        'type': connection.supplier_type,
+                        'name': connection.account_name or connection.account_email or connection.supplier_type,
+                        'account_name': connection.account_name,
+                        'account_email': connection.account_email,
+                        'account_id': connection.account_id
+                    },
+                    'needs_sync': True
+                })
+            elif connection.supplier_type == SupplierType.PRINTFUL.value:
+                from app.services.suppliers.printful import PrintfulService
+                service = PrintfulService(connection.access_token)
+                products_response = service.get_products()
+                
+                products = products_response if isinstance(products_response, list) else products_response.get('result', [])
+                
+                catalog_products = []
+                all_categories = set()
+                
+                for product in products:
+                    if search:
+                        name = product.get('name', '')
+                        if search.lower() not in name.lower():
+                            continue
+                    
+                    product_category = product.get('type')
+                    if category and product_category != category:
+                        continue
+                    
+                    if product_category:
+                        all_categories.add(product_category)
+                    
+                    catalog_products.append({
+                        'id': None,
+                        'supplier_connection_id': connection.id,
+                        'supplier_product_id': str(product.get('id', '')),
+                        'name': product.get('name', ''),
+                        'description': product.get('description'),
+                        'product_type': product.get('type'),
+                        'brand': product.get('brand'),
+                        'category': product_category,
+                        'base_price': None,
+                        'currency': 'USD',
+                        'available_sizes': [],
+                        'available_colors': [],
+                        'thumbnail_url': product.get('image', ''),
+                        'images': product.get('images', []),
+                        'is_active': True
+                    })
+                
+                start_idx = (page - 1) * per_page
+                end_idx = start_idx + per_page
+                total = len(catalog_products)
+                
+                return jsonify({
+                    'products': catalog_products[start_idx:end_idx],
+                    'categories': sorted(all_categories),
+                    'pagination': {
+                        'page': page,
+                        'per_page': per_page,
+                        'total': total,
+                        'pages': (total + per_page - 1) // per_page if total > 0 else 1,
+                        'has_next': end_idx < total,
+                        'has_prev': page > 1
+                    },
+                    'supplier': {
+                        'type': connection.supplier_type,
+                        'name': connection.account_name or connection.account_email or connection.supplier_type,
+                        'account_name': connection.account_name,
+                        'account_email': connection.account_email,
+                        'account_id': connection.account_id
+                    },
+                    'needs_sync': True
+                })
+        except Exception as e:
+            current_app.logger.error(f"Error fetching catalog from API: {str(e)}")
+            # Fall through to database query (might be empty)
+
+    # Use database products
     query = SupplierProduct.query.filter_by(
         supplier_connection_id=connection.id,
         is_active=True
@@ -568,7 +800,8 @@ def add_user_product():
         return jsonify({'error': 'No data provided'}), 400
 
     supplier_connection_id = data.get('supplier_connection_id')
-    supplier_product_id = data.get('supplier_product_id')  # This is the SupplierProduct.id
+    supplier_product_id = data.get('supplier_product_id')  # Can be database ID or external ID
+    supplier_product_external_id = data.get('supplier_product_external_id')  # External ID from supplier API
 
     if not supplier_connection_id or not supplier_product_id:
         return jsonify({'error': 'supplier_connection_id and supplier_product_id are required'}), 400
@@ -583,11 +816,94 @@ def add_user_product():
     if not connection:
         return jsonify({'error': 'Connection not found'}), 404
 
-    # Get supplier product
-    supplier_product = SupplierProduct.query.filter_by(
-        id=supplier_product_id,
-        supplier_connection_id=supplier_connection_id
-    ).first()
+    # Try to get supplier product from database
+    # First try by database ID (if it's a number)
+    supplier_product = None
+    if isinstance(supplier_product_id, int) or (isinstance(supplier_product_id, str) and supplier_product_id.isdigit()):
+        supplier_product = SupplierProduct.query.filter_by(
+            id=int(supplier_product_id),
+            supplier_connection_id=supplier_connection_id
+        ).first()
+    
+    # If not found, try by external supplier_product_id
+    if not supplier_product and supplier_product_external_id:
+        supplier_product = SupplierProduct.query.filter_by(
+            supplier_product_id=str(supplier_product_external_id),
+            supplier_connection_id=supplier_connection_id
+        ).first()
+    
+    # If still not found, try using supplier_product_id as external ID
+    if not supplier_product:
+        supplier_product = SupplierProduct.query.filter_by(
+            supplier_product_id=str(supplier_product_id),
+            supplier_connection_id=supplier_connection_id
+        ).first()
+
+    # If product not in database, fetch from API and create it
+    if not supplier_product:
+        try:
+            from app.services.suppliers.sync import _upsert_supplier_product
+            from datetime import datetime
+            
+            # Use external ID if provided, otherwise use supplier_product_id
+            external_id = str(supplier_product_external_id or supplier_product_id)
+            
+            if connection.supplier_type == SupplierType.GELATO.value:
+                from app.services.suppliers.gelato import GelatoService
+                service = GelatoService(
+                    api_key=connection.api_key,
+                    access_token=connection.access_token
+                )
+                # Fetch the specific product
+                try:
+                    product_data = service.get_product(external_id)
+                except:
+                    # If get_product fails, try fetching all and finding it
+                    products_response = service.get_products(
+                        store_id=connection.store_id,
+                        limit=1000,
+                        offset=0
+                    )
+                    products = (
+                        products_response.get('products', []) or
+                        products_response.get('data', []) or
+                        products_response.get('items', []) or
+                        (products_response if isinstance(products_response, list) else [])
+                    )
+                    product_data = next((p for p in products if str(p.get('uid') or p.get('id') or '') == external_id), None)
+                    if not product_data:
+                        return jsonify({'error': 'Product not found in supplier catalog'}), 404
+                
+                # Create supplier product entry
+                _upsert_supplier_product(
+                    connection=connection,
+                    supplier_product_id=external_id,
+                    data={
+                        'name': product_data.get('title') or product_data.get('name') or '',
+                        'description': product_data.get('description'),
+                        'product_type': product_data.get('productType') or product_data.get('type'),
+                        'brand': product_data.get('brand'),
+                        'category': product_data.get('category'),
+                        'catalog_id': product_data.get('catalogId') or product_data.get('catalog_id'),
+                        'base_price': product_data.get('price') or product_data.get('basePrice'),
+                        'currency': product_data.get('currency', 'USD'),
+                        'available_sizes': product_data.get('sizes', []) or product_data.get('availableSizes', []),
+                        'available_colors': product_data.get('colors', []) or product_data.get('availableColors', []),
+                        'thumbnail_url': product_data.get('imageUrl') or product_data.get('thumbnailUrl') or product_data.get('image'),
+                        'images': product_data.get('images', [])
+                    }
+                )
+                
+                # Reload the product
+                supplier_product = SupplierProduct.query.filter_by(
+                    supplier_product_id=external_id,
+                    supplier_connection_id=supplier_connection_id
+                ).first()
+            else:
+                return jsonify({'error': 'Product not synced. Please sync the supplier connection first.'}), 404
+        except Exception as e:
+            current_app.logger.error(f"Error creating supplier product from API: {str(e)}")
+            return jsonify({'error': f'Failed to fetch product from supplier: {str(e)}'}), 500
 
     if not supplier_product:
         return jsonify({'error': 'Supplier product not found'}), 404

@@ -4,7 +4,7 @@ Handles connecting, managing, and syncing POD suppliers.
 Supports multiple accounts per supplier type.
 """
 from datetime import datetime
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.blueprints.suppliers import suppliers_bp

@@ -72,18 +72,30 @@ def create_app(config_name='default'):
     app.register_blueprint(products_bp, url_prefix='/api/products')
     app.register_blueprint(templates_bp, url_prefix='/api/templates')
 
-    # JWT error handlers
+    # JWT error handlers - ensure CORS headers are set
     @jwt.expired_token_loader
     def expired_token_callback(jwt_header, jwt_payload):
-        return {'message': 'Token has expired', 'error': 'token_expired'}, 401
+        from flask import jsonify
+        response = jsonify({'message': 'Token has expired', 'error': 'token_expired'})
+        response.headers.add('Access-Control-Allow-Origin', frontend_url)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 401
 
     @jwt.invalid_token_loader
     def invalid_token_callback(error):
-        return {'message': 'Invalid token', 'error': 'invalid_token'}, 401
+        from flask import jsonify
+        response = jsonify({'message': 'Invalid token', 'error': 'invalid_token'})
+        response.headers.add('Access-Control-Allow-Origin', frontend_url)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 401
 
     @jwt.unauthorized_loader
     def missing_token_callback(error):
-        return {'message': 'Authorization required', 'error': 'authorization_required'}, 401
+        from flask import jsonify
+        response = jsonify({'message': 'Authorization required', 'error': 'authorization_required'})
+        response.headers.add('Access-Control-Allow-Origin', frontend_url)
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 401
 
     # Health check endpoint
     @app.route('/api/health')

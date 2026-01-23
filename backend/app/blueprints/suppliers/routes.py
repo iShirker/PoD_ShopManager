@@ -152,18 +152,30 @@ def connect_supplier(supplier_type):
         if not is_valid:
             error_msg = result.get('error', 'Connection validation failed')
             details = result.get('details')
-            return jsonify({
+            response = jsonify({
                 'error': error_msg,
                 'details': details or error_msg
-            }), 401
+            })
+            # Ensure CORS headers on error responses
+            frontend_url = current_app.config.get('FRONTEND_URL', '').rstrip('/')
+            if frontend_url:
+                response.headers.add('Access-Control-Allow-Origin', frontend_url)
+                response.headers.add('Access-Control-Allow-Credentials', 'true')
+            return response, 401
 
     except Exception as e:
         import traceback
         current_app.logger.error(f"Supplier connection error: {str(e)}\n{traceback.format_exc()}")
-        return jsonify({
+        response = jsonify({
             'error': f'Connection failed: {str(e)}',
             'details': str(e)
-        }), 500
+        })
+        # Ensure CORS headers on error responses
+        frontend_url = current_app.config.get('FRONTEND_URL', '').rstrip('/')
+        if frontend_url:
+            response.headers.add('Access-Control-Allow-Origin', frontend_url)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 500
 
     # Check if this exact API key already exists for this user
     existing = SupplierConnection.query.filter_by(

@@ -55,7 +55,17 @@ export default function SupplierLoginModal({ supplier, onClose, onApiKeySuccess 
       onApiKeySuccess?.()
       onClose()
     } catch (error: any) {
-      const errorMsg = error.response?.data?.error || error.response?.data?.details || `Failed to connect to ${config.name}`
+      let errorMsg = `Failed to connect to ${config.name}`
+      if (error.response?.data) {
+        const data = error.response.data
+        if (data.details) {
+          errorMsg = `${data.error || errorMsg}: ${data.details}`
+        } else if (data.error) {
+          errorMsg = data.error
+        }
+      } else if (error.message) {
+        errorMsg = error.message
+      }
       toast.error(errorMsg)
     } finally {
       setIsLoading(false)

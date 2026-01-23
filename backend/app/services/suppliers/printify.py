@@ -43,7 +43,14 @@ class PrintifyService:
 
     def get_shops(self):
         """Get all shops associated with the account."""
-        return self._request('GET', 'shops.json')
+        # Try both endpoints - some versions use different formats
+        try:
+            return self._request('GET', 'shops.json')
+        except requests.exceptions.HTTPError as e:
+            # If shops.json fails, try shops endpoint
+            if e.response.status_code == 404:
+                return self._request('GET', 'shops')
+            raise
 
     def get_shop(self, shop_id):
         """Get specific shop details."""
@@ -197,7 +204,17 @@ def validate_printify_connection(api_token, shop_id=None):
     """
     try:
         service = PrintifyService(api_token)
-        shops_response = service.get_shops()
+        
+        # First, try to get shops to validate the token
+        try:
+            shops_response = service.get_shops()
+        except requests.exceptions.HTTPError as e:
+            # If shops endpoint fails, the token might still be valid
+            # Try a simpler endpoint to validate
+            if e.response.status_code in [401, 403]:
+                raise  # Re-raise auth errors
+            # For other errors, try to continue with empty shops
+            shops_response = []
 
         # Handle different response formats
         # Printify API might return: list, {'data': [...]}, or {'shops': [...]}
@@ -259,18 +276,52 @@ def validate_printify_connection(api_token, shop_id=None):
         }
     except requests.exceptions.HTTPError as e:
         error_detail = None
-        try:
-            error_detail = e.response.json().get('message') or e.response.json().get('error')
-        except:
-            error_detail = e.response.text[:200] if e.response.text else str(e)
+        status_code = e.response.status_code if e.response else None
         
-        if e.response.status_code == 401:
-            return False, {'error': 'Invalid API token', 'details': error_detail}
-        elif e.response.status_code == 403:
-            return False, {'error': 'Access forbidden - check API token permissions', 'details': error_detail}
-        return False, {'error': f'API request failed: {e.response.status_code}', 'details': error_detail}
+        try:
+            if e.response and e.response.text:
+                error_json = e.response.json()
+                error_detail = (
+                    error_json.get('message') or 
+                    error_json.get('error') or 
+                    error_json.get('description') or
+                    str(error_json)
+                )
+        except:
+            error_detail = e.response.text[:500] if (e.response and e.response.text) else str(e)
+        
+        if status_code == 401:
+            return False, {
+                'error': 'Invalid API token - token may be expired or incorrect',
+                'details': error_detail or 'Authentication failed. Please check your Printify API token.'
+            }
+        elif status_code == 403:
+            return False, {
+                'error': 'Access forbidden - check API token permissions',
+                'details': error_detail or 'Your token does not have the required permissions.'
+            }
+        elif status_code == 404:
+            return False, {
+                'error': 'API endpoint not found',
+                'details': error_detail or 'The Printify API endpoint may have changed. Please check the API documentation.'
+            }
+        return False, {
+            'error': f'API request failed (Status {status_code})',
+            'details': error_detail or str(e)
+        }
     except Exception as e:
-        return False, {'error': f'Connection failed: {str(e)}'}
+        import traceback
+        error_msg = str(e)
+        # Provide more helpful error messages
+        if 'Connection' in error_msg or 'timeout' in error_msg.lower():
+            error_msg = 'Connection timeout - please check your internet connection and try again'
+        elif 'SSL' in error_msg or 'certificate' in error_msg.lower():
+            error_msg = 'SSL certificate error - please check your system time and date settings'
+        
+        return False, {
+            'error': f'Connection failed: {error_msg}',
+            'details': str(e)
+        }
 
 
 def get_printify_product_pricing(api_token, blueprint_id, print_provider_id):

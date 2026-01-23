@@ -143,13 +143,20 @@ def connect_supplier(supplier_type):
             return jsonify({'error': 'Unsupported supplier type'}), 400
 
         if not is_valid:
+            error_msg = result.get('error', 'Connection validation failed')
+            details = result.get('details')
             return jsonify({
-                'error': 'Invalid credentials',
-                'details': result.get('error', 'Connection validation failed')
+                'error': error_msg,
+                'details': details or error_msg
             }), 401
 
     except Exception as e:
-        return jsonify({'error': f'Connection failed: {str(e)}'}), 500
+        import traceback
+        current_app.logger.error(f"Supplier connection error: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({
+            'error': f'Connection failed: {str(e)}',
+            'details': str(e)
+        }), 500
 
     # Check if this exact API key already exists for this user
     existing = SupplierConnection.query.filter_by(

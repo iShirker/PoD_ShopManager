@@ -552,6 +552,30 @@ def get_supplier_catalog(connection_id):
                     if product_category:
                         all_categories.add(product_category)
                     
+                    # Extract thumbnail URL - handle various formats
+                    thumbnail_url = None
+                    images_list = product.get('images', []) or []
+                    
+                    # Try different image field names
+                    if product.get('imageUrl'):
+                        thumbnail_url = product.get('imageUrl')
+                    elif product.get('thumbnailUrl'):
+                        thumbnail_url = product.get('thumbnailUrl')
+                    elif product.get('image'):
+                        thumbnail_url = product.get('image')
+                    elif product.get('thumbnail'):
+                        thumbnail_url = product.get('thumbnail')
+                    elif product.get('image_url'):
+                        thumbnail_url = product.get('image_url')
+                    elif product.get('thumbnail_url'):
+                        thumbnail_url = product.get('thumbnail_url')
+                    # If images is an array, get first image
+                    elif images_list:
+                        if isinstance(images_list[0], str):
+                            thumbnail_url = images_list[0]
+                        elif isinstance(images_list[0], dict):
+                            thumbnail_url = images_list[0].get('url') or images_list[0].get('imageUrl') or images_list[0].get('thumbnailUrl')
+                    
                     catalog_products.append({
                         'id': None,  # Not in database yet
                         'supplier_connection_id': connection.id,
@@ -565,8 +589,8 @@ def get_supplier_catalog(connection_id):
                         'currency': product.get('currency', 'USD'),
                         'available_sizes': product.get('sizes', []) or product.get('availableSizes', []),
                         'available_colors': product.get('colors', []) or product.get('availableColors', []),
-                        'thumbnail_url': product.get('imageUrl') or product.get('thumbnailUrl') or product.get('image'),
-                        'images': product.get('images', []) or [],
+                        'thumbnail_url': thumbnail_url,
+                        'images': images_list,
                         'is_active': True
                     })
                 

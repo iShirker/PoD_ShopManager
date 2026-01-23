@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { suppliersApi, productsApi } from '../lib/api'
 import { getSupplierName, getSupplierColor, formatCurrency } from '../lib/utils'
 import { cn } from '../lib/utils'
-import { X, Search, Package, Loader2, Plus } from 'lucide-react'
+import { X, Search, Package, Loader2, Plus, Info } from 'lucide-react'
 
 interface AddProductModalProps {
   isOpen: boolean
@@ -16,6 +16,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [page, setPage] = useState(1)
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null)
   const queryClient = useQueryClient()
 
   // Get supplier connections
@@ -87,6 +88,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
       setSearch('')
       setSelectedCategory('')
       setPage(1)
+      setSelectedProduct(null)
     }
   }, [isOpen])
 
@@ -270,20 +272,33 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {products.map((product: any) => (
                           <div
-                            key={product.id}
-                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                            key={product.id || product.supplier_product_id}
+                            className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white cursor-pointer"
+                            onClick={(e) => {
+                              // Don't open modal if clicking the button
+                              if ((e.target as HTMLElement).closest('button')) return
+                              setSelectedProduct(product)
+                            }}
                           >
                             {product.thumbnail_url ? (
                               <img
                                 src={product.thumbnail_url}
                                 alt={product.name}
                                 className="w-full h-48 object-cover rounded mb-3"
+                                onError={(e) => {
+                                  // Fallback if image fails to load
+                                  (e.target as HTMLImageElement).style.display = 'none'
+                                  const parent = (e.target as HTMLImageElement).parentElement
+                                  if (parent) {
+                                    const fallback = parent.querySelector('.image-fallback') as HTMLElement
+                                    if (fallback) fallback.style.display = 'flex'
+                                  }
+                                }}
                               />
-                            ) : (
-                              <div className="w-full h-48 bg-gray-100 rounded mb-3 flex items-center justify-center">
-                                <Package className="w-12 h-12 text-gray-300" />
-                              </div>
-                            )}
+                            ) : null}
+                            <div className="w-full h-48 bg-gray-100 rounded mb-3 flex items-center justify-center image-fallback" style={{ display: product.thumbnail_url ? 'none' : 'flex' }}>
+                              <Package className="w-12 h-12 text-gray-300" />
+                            </div>
                             <h4 className="font-medium text-gray-900 mb-1 line-clamp-2">
                               {product.name}
                             </h4>
@@ -298,23 +313,38 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                                 {formatCurrency(product.base_price, product.currency)}
                               </p>
                             )}
-                            <button
-                              onClick={() => handleAddProduct(product)}
-                              disabled={addProductMutation.isPending}
-                              className="w-full btn-primary text-sm flex items-center justify-center gap-2"
-                            >
-                              {addProductMutation.isPending ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Adding...
-                                </>
-                              ) : (
-                                <>
-                                  <Plus className="w-4 h-4" />
-                                  Add to List
-                                </>
-                              )}
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedProduct(product)
+                                }}
+                                className="flex-1 btn-secondary text-sm flex items-center justify-center gap-2"
+                              >
+                                <Info className="w-4 h-4" />
+                                Details
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleAddProduct(product)
+                                }}
+                                disabled={addProductMutation.isPending}
+                                className="flex-1 btn-primary text-sm flex items-center justify-center gap-2"
+                              >
+                                {addProductMutation.isPending ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Adding...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus className="w-4 h-4" />
+                                    Add
+                                  </>
+                                )}
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -353,6 +383,161 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
           </div>
         </div>
       </div>
+
+      {/* Product Detail Modal */}
+      {selectedProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-2xl font-bold text-gray-900">Product Details</h2>
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Images */}
+                <div>
+                  {selectedProduct.thumbnail_url ? (
+                    <img
+                      src={selectedProduct.thumbnail_url}
+                      alt={selectedProduct.name}
+                      className="w-full rounded-lg mb-4"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-64 bg-gray-100 rounded-lg mb-4 flex items-center justify-center">
+                      <Package className="w-16 h-16 text-gray-300" />
+                    </div>
+                  )}
+                  {selectedProduct.images && selectedProduct.images.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {selectedProduct.images.slice(0, 4).map((img: string, idx: number) => (
+                        <img
+                          key={idx}
+                          src={typeof img === 'string' ? img : (img as any)?.url || (img as any)?.imageUrl}
+                          alt={`${selectedProduct.name} ${idx + 1}`}
+                          className="w-full h-20 object-cover rounded"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none'
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Details */}
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedProduct.name}</h3>
+                  
+                  {selectedProduct.product_type && (
+                    <p className="text-sm text-gray-600 mb-2">
+                      <span className="font-medium">Type:</span> {selectedProduct.product_type}
+                    </p>
+                  )}
+                  
+                  {selectedProduct.brand && (
+                    <p className="text-sm text-gray-600 mb-2">
+                      <span className="font-medium">Brand:</span> {selectedProduct.brand}
+                    </p>
+                  )}
+                  
+                  {selectedProduct.category && (
+                    <p className="text-sm text-gray-600 mb-2">
+                      <span className="font-medium">Category:</span> {selectedProduct.category}
+                    </p>
+                  )}
+                  
+                  {selectedProduct.base_price && (
+                    <p className="text-xl font-bold text-gray-900 mb-4">
+                      {formatCurrency(selectedProduct.base_price, selectedProduct.currency)}
+                    </p>
+                  )}
+
+                  {selectedProduct.description && (
+                    <div className="mb-4">
+                      <h4 className="font-medium text-gray-900 mb-2">Description</h4>
+                      <p className="text-sm text-gray-600 whitespace-pre-wrap">{selectedProduct.description}</p>
+                    </div>
+                  )}
+
+                  {selectedProduct.available_sizes && selectedProduct.available_sizes.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-medium text-gray-900 mb-2">Available Sizes</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedProduct.available_sizes.map((size: string, idx: number) => (
+                          <span key={idx} className="px-3 py-1 bg-gray-100 rounded text-sm">
+                            {size}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedProduct.available_colors && selectedProduct.available_colors.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-medium text-gray-900 mb-2">Available Colors</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedProduct.available_colors.map((color: string | any, idx: number) => {
+                          const colorName = typeof color === 'string' ? color : (color?.name || color?.color || 'Unknown')
+                          const colorHex = typeof color === 'object' ? (color?.hex || color?.code) : undefined
+                          return (
+                            <span
+                              key={idx}
+                              className="px-3 py-1 bg-gray-100 rounded text-sm flex items-center gap-2"
+                            >
+                              {colorHex && (
+                                <span
+                                  className="w-4 h-4 rounded-full border border-gray-300"
+                                  style={{ backgroundColor: colorHex }}
+                                />
+                              )}
+                              {colorName}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-6 border-t bg-gray-50">
+              <button
+                onClick={() => {
+                  handleAddProduct(selectedProduct)
+                  setSelectedProduct(null)
+                }}
+                disabled={addProductMutation.isPending}
+                className="w-full btn-primary flex items-center justify-center gap-2"
+              >
+                {addProductMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Adding to List...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-5 h-5" />
+                    Add to My Product List
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

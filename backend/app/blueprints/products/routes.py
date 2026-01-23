@@ -683,8 +683,11 @@ def get_supplier_catalog(connection_id):
                         product.get('categoryName') or
                         product_type_uid  # Use productTypeUid as fallback category
                     )
-                    # Normalize category for comparison (strip whitespace, handle None)
-                    normalized_product_category = product_category.strip() if product_category else None
+                    # Normalize category for comparison (strip whitespace, handle None/empty)
+                    if product_category:
+                        normalized_product_category = product_category.strip() or None
+                    else:
+                        normalized_product_category = None
                     
                     # Filter by category: if category is specified, only include matching products
                     if category is not None:
@@ -872,6 +875,8 @@ def get_supplier_catalog(connection_id):
                 catalog_products = []
                 all_categories = set()
                 
+                current_app.logger.info(f"Printify: Processing {len(blueprints)} blueprints, category filter: {category}")
+                
                 for blueprint in blueprints:
                     if not isinstance(blueprint, dict):
                         continue
@@ -882,16 +887,21 @@ def get_supplier_catalog(connection_id):
                             continue
                     
                     blueprint_category = blueprint.get('category')
-                    # Normalize category for comparison (strip whitespace, handle None)
-                    normalized_blueprint_category = blueprint_category.strip() if blueprint_category else None
+                    # Normalize category for comparison (strip whitespace, handle None/empty)
+                    if blueprint_category:
+                        normalized_blueprint_category = blueprint_category.strip() or None
+                    else:
+                        normalized_blueprint_category = None
                     
                     # Filter by category: if category is specified, only include matching products
+                    # When category is None (All Categories), show all products
                     if category is not None:
                         # Compare normalized values (case-insensitive for better matching)
-                        if normalized_blueprint_category and normalized_blueprint_category.lower() != category.lower():
-                            continue
-                        elif not normalized_blueprint_category:
-                            # If product has no category but we're filtering by category, skip it
+                        if normalized_blueprint_category:
+                            if normalized_blueprint_category.lower() != category.lower():
+                                continue
+                        else:
+                            # If product has no category but we're filtering by a specific category, skip it
                             continue
                     
                     if normalized_blueprint_category:
@@ -906,6 +916,7 @@ def get_supplier_catalog(connection_id):
                         elif isinstance(images_list[0], dict):
                             thumbnail_url = images_list[0].get('url') or images_list[0].get('src') or images_list[0].get('imageUrl')
                     
+                    # Only add to catalog if it passed the filter (or no filter applied)
                     catalog_products.append({
                         'id': None,
                         'supplier_connection_id': connection.id,
@@ -929,6 +940,8 @@ def get_supplier_catalog(connection_id):
                 start_idx = (page - 1) * per_page
                 end_idx = start_idx + per_page
                 total = len(catalog_products)
+                
+                current_app.logger.info(f"Printify: Returning {len(catalog_products[start_idx:end_idx])} products out of {total} total, categories: {sorted(all_categories)}")
                 
                 return jsonify({
                     'products': catalog_products[start_idx:end_idx],
@@ -1022,6 +1035,8 @@ def get_supplier_catalog(connection_id):
                 catalog_products = []
                 all_categories = set()
                 
+                current_app.logger.info(f"Printful: Processing {len(products)} products, category filter: {category}")
+                
                 for product in products:
                     if not isinstance(product, dict):
                         continue
@@ -1066,8 +1081,11 @@ def get_supplier_catalog(connection_id):
                             search_lower not in (product_type_display or '').lower()):
                             continue
                     
-                    # Normalize category for comparison (strip whitespace, handle None)
-                    normalized_product_category = product_category.strip() if product_category else None
+                    # Normalize category for comparison (strip whitespace, handle None/empty)
+                    if product_category:
+                        normalized_product_category = product_category.strip() or None
+                    else:
+                        normalized_product_category = None
                     
                     # Filter by category: if category is specified, only include matching products
                     if category is not None:

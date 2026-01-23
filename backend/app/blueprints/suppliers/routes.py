@@ -127,12 +127,13 @@ def connect_supplier(supplier_type):
                 # Try to get shop ID from API
                 is_valid, result = validate_printify_connection(api_key)
                 if is_valid and 'shops' in result:
-                    if len(result['shops']) == 1:
-                        shop_id = str(result['shops'][0]['id'])
-                    else:
+                    shops = result['shops']
+                    if isinstance(shops, list) and len(shops) == 1:
+                        shop_id = str(shops[0].get('id'))
+                    elif isinstance(shops, list) and len(shops) > 1:
                         return jsonify({
                             'error': 'Multiple shops found. Please specify shop_id.',
-                            'shops': result['shops']
+                            'shops': shops
                         }), 400
             else:
                 is_valid, result = validate_printify_connection(api_key, shop_id)

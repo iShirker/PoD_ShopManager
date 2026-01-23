@@ -197,7 +197,14 @@ def validate_printify_connection(api_token, shop_id=None):
     """
     try:
         service = PrintifyService(api_token)
-        shops = service.get_shops()
+        shops_response = service.get_shops()
+
+        # Handle different response formats
+        # Printify API might return: list, {'data': [...]}, or {'shops': [...]}
+        if isinstance(shops_response, dict):
+            shops = shops_response.get('data', shops_response.get('shops', []))
+        else:
+            shops = shops_response if isinstance(shops_response, list) else []
 
         # Extract account info
         account_name = None
@@ -221,17 +228,49 @@ def validate_printify_connection(api_token, shop_id=None):
             account_name = first_shop.get('title') or first_shop.get('name')
             email = first_shop.get('email') or first_shop.get('owner_email')
 
+        # If no shops found, still validate the token is working
+        # Try to decode JWT token to get user info if available
+        if not account_name:
+            try:
+                import base64
+                import json
+                # JWT tokens have 3 parts separated by dots
+                parts = api_token.split('.')
+                if len(parts) >= 2:
+                    # Decode the payload (second part)
+                    payload = parts[1]
+                    # Add padding if needed
+                    padding = len(payload) % 4
+                    if padding:
+                        payload += '=' * (4 - padding)
+                    decoded = base64.urlsafe_b64decode(payload)
+                    token_data = json.loads(decoded)
+                    # Extract user ID from token
+                    user_id = token_data.get('sub') or token_data.get('user_id')
+                    if user_id:
+                        account_name = f"Printify User {user_id}"
+            except Exception:
+                pass  # If JWT decoding fails, use fallback
+
         return True, {
             'shops': shops,
             'account_name': account_name or f"Printify ({api_token[-8:]})",
             'email': email,
         }
     except requests.exceptions.HTTPError as e:
+        error_detail = None
+        try:
+            error_detail = e.response.json().get('message') or e.response.json().get('error')
+        except:
+            error_detail = e.response.text[:200] if e.response.text else str(e)
+        
         if e.response.status_code == 401:
-            return False, {'error': 'Invalid API token'}
-        return False, {'error': str(e)}
+            return False, {'error': 'Invalid API token', 'details': error_detail}
+        elif e.response.status_code == 403:
+            return False, {'error': 'Access forbidden - check API token permissions', 'details': error_detail}
+        return False, {'error': f'API request failed: {e.response.status_code}', 'details': error_detail}
     except Exception as e:
-        return False, {'error': str(e)}
+        return False, {'error': f'Connection failed: {str(e)}'}
 
 
 def get_printify_product_pricing(api_token, blueprint_id, print_provider_id):

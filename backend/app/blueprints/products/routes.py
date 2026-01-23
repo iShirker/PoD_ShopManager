@@ -1057,6 +1057,9 @@ def get_supplier_catalog(connection_id):
                     product_category = product.get('type_name') or product.get('category') or product.get('type')  # Category should be type_name
                     product_model = product.get('model') or product.get('model_number')
                     
+                    # Calculate name without brand for model extraction
+                    name_without_brand = product_name.replace(product_brand, '').strip() if product_brand and product_brand in product_name else product_name
+                    
                     # Try to extract model from name if not provided (e.g., "Gildan 18000" -> "18000")
                     if not product_model and product_name and product_brand:
                         # Remove brand from name and see if there's a model number
@@ -1077,7 +1080,6 @@ def get_supplier_catalog(connection_id):
                         
                     if search:
                         search_lower = search.lower()
-                        name_without_brand = product_name.replace(product_brand, '').strip() if product_brand else product_name
                         if (search_lower not in product_name.lower() and 
                             search_lower not in (product_brand or '').lower() and
                             search_lower not in (product_model or '').lower() and

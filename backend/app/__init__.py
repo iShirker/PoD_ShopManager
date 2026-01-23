@@ -56,36 +56,6 @@ def create_app(config_name='default'):
          supports_credentials=True,
          expose_headers=["Content-Type", "Authorization"])
     
-    # Add error handler to ensure CORS headers are set even on errors
-    @app.errorhandler(Exception)
-    def handle_error(e):
-        """Handle all errors and ensure CORS headers are set."""
-        from flask import jsonify
-        import traceback
-        
-        app.logger.error(f"Error: {str(e)}\n{traceback.format_exc()}")
-        
-        # Create error response
-        if hasattr(e, 'code') and e.code:
-            status_code = e.code
-        elif hasattr(e, 'status_code'):
-            status_code = e.status_code
-        else:
-            status_code = 500
-        
-        response = jsonify({
-            'error': str(e) if status_code < 500 else 'Internal server error',
-            'message': str(e) if status_code < 500 else 'An unexpected error occurred'
-        })
-        response.status_code = status_code
-        
-        # Ensure CORS headers are set on error responses
-        origin = request.headers.get('Origin')
-        if origin == frontend_url:
-            response.headers.add('Access-Control-Allow-Origin', frontend_url)
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-        
-        return response
 
     # Register blueprints
     from app.blueprints.auth import auth_bp

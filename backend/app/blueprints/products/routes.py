@@ -1465,6 +1465,156 @@ def add_user_product():
                     supplier_product_id=external_id,
                     supplier_connection_id=supplier_connection_id
                 ).first()
+            elif connection.supplier_type == SupplierType.PRINTIFY.value:
+                from app.services.suppliers.printify import PrintifyService
+                service = PrintifyService(connection.api_key)
+                
+                # Fetch blueprint details
+                try:
+                    blueprint_response = service.get_blueprint(external_id)
+                    blueprint_data = blueprint_response
+                    if isinstance(blueprint_data, dict):
+                        blueprint_data = blueprint_data.get('blueprint') or blueprint_data.get('data') or blueprint_data
+                    
+                    if not blueprint_data:
+                        return jsonify({'error': 'Blueprint not found in Printify catalog'}), 404
+                    
+                    # Extract category
+                    blueprint_category = (
+                        blueprint_data.get('category') or
+                        blueprint_data.get('categoryName') or
+                        blueprint_data.get('category_name') or
+                        blueprint_data.get('productCategory') or
+                        blueprint_data.get('type')
+                    )
+                    
+                    # Extract model
+                    printify_model = (blueprint_data.get('model') or 
+                                     blueprint_data.get('title') or '')
+                    
+                    # Extract thumbnail URL
+                    thumbnail_url = None
+                    images_list = blueprint_data.get('images', []) or []
+                    if images_list:
+                        if isinstance(images_list[0], str):
+                            thumbnail_url = images_list[0]
+                        elif isinstance(images_list[0], dict):
+                            thumbnail_url = images_list[0].get('url') or images_list[0].get('src') or images_list[0].get('imageUrl')
+                    
+                    # Create supplier product entry
+                    _upsert_supplier_product(
+                        connection=connection,
+                        supplier_product_id=external_id,
+                        data={
+                            'name': blueprint_data.get('title') or blueprint_data.get('name') or '',
+                            'description': blueprint_data.get('description'),
+                            'product_type': printify_model,
+                            'brand': blueprint_data.get('brand'),
+                            'category': blueprint_category,
+                            'blueprint_id': external_id,
+                            'base_price': None,  # Pricing varies by provider
+                            'currency': 'USD',
+                            'available_sizes': [],
+                            'available_colors': [],
+                            'thumbnail_url': thumbnail_url,
+                            'images': [img.get('src') if isinstance(img, dict) else img for img in images_list]
+                        }
+                    )
+                    
+                    # Reload the product
+                    supplier_product = SupplierProduct.query.filter_by(
+                        supplier_product_id=external_id,
+                        supplier_connection_id=supplier_connection_id
+                    ).first()
+                except Exception as e:
+                    current_app.logger.error(f"Error fetching Printify blueprint {external_id}: {str(e)}")
+                    return jsonify({'error': f'Failed to fetch blueprint from Printify: {str(e)}'}), 500
+            elif connection.supplier_type == SupplierType.PRINTFUL.value:
+                from app.services.suppliers.printful import PrintfulService
+                service = PrintfulService(connection.api_key)
+                
+                # Fetch product details
+                try:
+                    product_response = service.get_product(external_id)
+                    product_data = product_response
+                    if isinstance(product_data, dict):
+                        product_data = product_data.get('product') or product_data.get('data') or product_data
+                    
+                    if not product_data:
+                        return jsonify({'error': 'Product not found in Printful catalog'}), 404
+                    
+                    # Extract product info (similar to catalog endpoint)
+                    product_name = product_data.get('name', '')
+                    product_brand = product_data.get('brand') or product_data.get('manufacturer')
+                    product_model = product_data.get('model') or product_data.get('model_number')
+                    product_type_value = product_data.get('type')
+                    
+                    # Try to extract model from name if not provided
+                    if not product_model and product_name and product_brand:
+                        import re
+                        name_without_brand = product_name.replace(product_brand, '').strip() if product_brand in product_name else product_name
+                        model_match = re.search(r'\b(\d{4,})\b', name_without_brand)
+                        if model_match:
+                            product_model = model_match.group(1)
+                    
+                    # Build product_type display
+                    if product_brand and product_model:
+                        product_type_display = f"{product_brand} {product_model}"
+                    elif product_brand:
+                        product_type_display = product_brand
+                    elif product_model:
+                        product_type_display = product_model
+                    else:
+                        product_type_display = product_type_value or ''
+                    
+                    # Get category - use main_category_id if available
+                    product_category = None
+                    main_category_id = product_data.get('main_category_id')
+                    if main_category_id:
+                        # Try to get category from categories map (if we had it cached)
+                        # For now, use category field as fallback
+                        product_category = product_data.get('category') or product_data.get('category_name')
+                    else:
+                        product_category = product_data.get('category') or product_data.get('category_name')
+                    
+                    # Extract thumbnail URL
+                    thumbnail_url = None
+                    images_list = product_data.get('images', []) or []
+                    if product_data.get('image'):
+                        thumbnail_url = product_data.get('image')
+                    elif images_list:
+                        if isinstance(images_list[0], str):
+                            thumbnail_url = images_list[0]
+                        elif isinstance(images_list[0], dict):
+                            thumbnail_url = images_list[0].get('url') or images_list[0].get('src') or images_list[0].get('image')
+                    
+                    # Create supplier product entry
+                    _upsert_supplier_product(
+                        connection=connection,
+                        supplier_product_id=external_id,
+                        data={
+                            'name': product_name,
+                            'description': _strip_html(product_data.get('description')) if product_data.get('description') else None,
+                            'product_type': product_type_display,
+                            'brand': product_brand,
+                            'category': product_category,
+                            'base_price': None,
+                            'currency': 'USD',
+                            'available_sizes': [],
+                            'available_colors': [],
+                            'thumbnail_url': thumbnail_url,
+                            'images': images_list
+                        }
+                    )
+                    
+                    # Reload the product
+                    supplier_product = SupplierProduct.query.filter_by(
+                        supplier_product_id=external_id,
+                        supplier_connection_id=supplier_connection_id
+                    ).first()
+                except Exception as e:
+                    current_app.logger.error(f"Error fetching Printful product {external_id}: {str(e)}")
+                    return jsonify({'error': f'Failed to fetch product from Printful: {str(e)}'}), 500
             else:
                 return jsonify({'error': 'Product not synced. Please sync the supplier connection first.'}), 404
         except Exception as e:

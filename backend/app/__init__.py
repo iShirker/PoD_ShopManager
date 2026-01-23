@@ -2,7 +2,7 @@
 Flask application factory.
 Creates and configures the Flask application with all extensions and blueprints.
 """
-from flask import Flask
+from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
@@ -39,14 +39,34 @@ def create_app(config_name='default'):
     limiter.init_app(app)
 
     # CORS configuration
+    frontend_url = app.config.get('FRONTEND_URL', 'http://localhost:3000')
+    
+    # Ensure no trailing slash for CORS matching
+    frontend_url = frontend_url.rstrip('/')
+    
+    # Log CORS configuration for debugging
+    app.logger.info(f"CORS configured for frontend: {frontend_url}")
+    
     CORS(app, resources={
         r"/api/*": {
-            "origins": [app.config['FRONTEND_URL']],
+            "origins": [frontend_url],
             "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"],
-            "supports_credentials": True
+            "supports_credentials": True,
+            "expose_headers": ["Content-Type", "Authorization"]
         }
     })
+    
+    # Add CORS headers manually for OPTIONS requests (preflight)
+    @app.after_request
+    def after_request(response):
+        origin = request.headers.get('Origin')
+        if origin and origin == frontend_url:
+            response.headers.add('Access-Control-Allow-Origin', frontend_url)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+            response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        return response
 
     # Register blueprints
     from app.blueprints.auth import auth_bp

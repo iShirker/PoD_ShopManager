@@ -533,7 +533,43 @@ def get_supplier_catalog(connection_id):
                     api_key=connection.api_key,
                     access_token=connection.access_token
                 )
-                # Fetch products from API
+                
+                # First, fetch a larger sample of products to collect all categories
+                # Fetch first 200 products to get comprehensive category list
+                all_categories = set()
+                category_sample_products = []
+                try:
+                    for sample_offset in range(0, 200, 100):  # Fetch in batches of 100
+                        sample_response = service.get_products(
+                            store_id=connection.store_id,
+                            limit=100,
+                            offset=sample_offset
+                        )
+                        sample_products = (
+                            sample_response.get('products', []) or
+                            sample_response.get('data', []) or
+                            sample_response.get('items', []) or
+                            (sample_response if isinstance(sample_response, list) else [])
+                        )
+                        if not sample_products:
+                            break
+                        category_sample_products.extend(sample_products)
+                        # Extract categories from sample (quick pass without full details)
+                        for sample_product in sample_products:
+                            if isinstance(sample_product, dict):
+                                sample_category = (
+                                    sample_product.get('category') or
+                                    sample_product.get('productCategory') or
+                                    sample_product.get('productTypeUid')
+                                )
+                                if sample_category:
+                                    all_categories.add(sample_category)
+                        if len(sample_products) < 100:
+                            break
+                except Exception as sample_error:
+                    current_app.logger.warning(f"Could not fetch category sample: {str(sample_error)}")
+                
+                # Now fetch the actual page of products
                 offset = (page - 1) * per_page
                 products_response = service.get_products(
                     store_id=connection.store_id,
@@ -555,14 +591,9 @@ def get_supplier_catalog(connection_id):
                     sample_product = products[0]
                     if isinstance(sample_product, dict):
                         current_app.logger.info(f"Sample Gelato product keys: {list(sample_product.keys())}")
-                        # Log a sample product structure (first 1000 chars to avoid huge logs)
-                        import json
-                        sample_str = json.dumps(sample_product, indent=2, default=str)[:1000]
-                        current_app.logger.info(f"Sample Gelato product structure: {sample_str}...")
                 
                 # Convert to SupplierProduct format
                 catalog_products = []
-                all_categories = set()
                 
                 if not products or len(products) == 0:
                     current_app.logger.warning(f"No Gelato products found in response. Response keys: {list(products_response.keys()) if isinstance(products_response, dict) else 'Not a dict'}")
@@ -590,6 +621,19 @@ def get_supplier_catalog(connection_id):
                             )
                             product_details = detail_service.get_product(product_uid)
                             current_app.logger.debug(f"Fetched Gelato product details for {product_uid}")
+                            
+                            # Extract category from detailed product info
+                            if isinstance(product_details, dict):
+                                detail_category = (
+                                    product_details.get('category') or
+                                    product_details.get('productCategory') or
+                                    product_details.get('categoryName') or
+                                    product_details.get('category_name') or
+                                    product_details.get('product', {}).get('category') or
+                                    product_details.get('data', {}).get('category')
+                                )
+                                if detail_category:
+                                    all_categories.add(detail_category)
                     except Exception as detail_error:
                         current_app.logger.warning(f"Could not fetch Gelato product details for {product_uid}: {str(detail_error)}")
                         product_details = None
@@ -632,13 +676,17 @@ def get_supplier_catalog(connection_id):
                     product_category = (
                         product_data.get('category') or 
                         product_data.get('productCategory') or
+                        product_data.get('categoryName') or
+                        product_data.get('category_name') or
                         product.get('category') or
                         product.get('productCategory') or
+                        product.get('categoryName') or
                         product_type_uid  # Use productTypeUid as fallback category
                     )
                     if category and product_category != category:
                         continue
                     
+                    # Add to categories set (will be used for dropdown)
                     if product_category:
                         all_categories.add(product_category)
                     

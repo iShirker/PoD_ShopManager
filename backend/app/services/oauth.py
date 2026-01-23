@@ -409,13 +409,16 @@ def exchange_printful_code(code):
     Returns:
         Token data dictionary with access_token
     """
+    redirect_url = f"{current_app.config.get('BACKEND_URL', 'http://localhost:5000')}/api/auth/printful/callback"
+    
     token_response = requests.post(
         'https://www.printful.com/oauth/token',
         data={
             'grant_type': 'authorization_code',
             'client_id': current_app.config.get('PRINTFUL_CLIENT_ID', ''),
             'client_secret': current_app.config.get('PRINTFUL_CLIENT_SECRET', ''),
-            'code': code
+            'code': code,
+            'redirect_url': redirect_url  # Include redirect_url for security validation
         }
     )
     token_response.raise_for_status()

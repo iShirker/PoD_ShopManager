@@ -628,9 +628,27 @@ def printful_callback():
         stores = stores_response.get('result', [])
 
         # Get store info for account details
-        from app.services.suppliers.printful import PrintfulService
-        service = PrintfulService(access_token)
-        store_info = service.get_store_info()
+        # Use first store from stores list, or try to get store details via API
+        store_info = None
+        if stores:
+            # Use first store as the primary store
+            first_store = stores[0]
+            store_info = first_store
+            
+            # Try to get detailed store info if we have store ID
+            store_id = first_store.get('id')
+            if store_id:
+                try:
+                    from app.services.suppliers.printful import PrintfulService
+                    service = PrintfulService(access_token)
+                    # Try to get detailed store info using stores/{id} endpoint
+                    detailed_store = service._request('GET', f'stores/{store_id}')
+                    if detailed_store:
+                        store_info = detailed_store
+                except Exception as e:
+                    # If detailed store info fails, use basic store info from list
+                    current_app.logger.warning(f"Could not get detailed store info: {str(e)}")
+                    store_info = first_store
 
         # Create or update supplier connection
         connection = SupplierConnection.query.filter_by(
@@ -670,5 +688,8 @@ def printful_callback():
         )
 
     except Exception as e:
-        current_app.logger.error(f"Printful OAuth error: {str(e)}")
-        return redirect(f"{current_app.config['FRONTEND_URL']}/suppliers/callback?error=oauth_failed")
+        current_app.logger.error(f"Printful OAuth error: {str(e)}", exc_info=True)
+        error_message = str(e)
+        # Log more details for debugging
+        current_app.logger.error(f"Printful OAuth error details - Code: {code[:20] if code else 'None'}..., State: {state}, User ID: {user_id}")
+        return redirect(f"{current_app.config['FRONTEND_URL']}/suppliers/callback?error=oauth_failed&details={error_message[:100]}")

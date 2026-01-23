@@ -392,7 +392,7 @@ def get_printful_auth_url(state):
     """
     params = {
         'client_id': current_app.config.get('PRINTFUL_CLIENT_ID', ''),
-        'redirect_uri': f"{current_app.config.get('BACKEND_URL', 'http://localhost:5000')}/api/auth/printful/callback",
+        'redirect_url': f"{current_app.config.get('BACKEND_URL', 'http://localhost:5000')}/api/auth/printful/callback",
         'response_type': 'code',
         'state': state
     }

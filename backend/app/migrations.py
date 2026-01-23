@@ -17,6 +17,7 @@ def run_startup_migrations(db, app):
         try:
             _migrate_supplier_connections_multiple_accounts(db)
             _migrate_api_key_column_size(db)
+            _migrate_user_products_tables(db)
             app.logger.info("Startup migrations completed successfully")
         except Exception as e:
             app.logger.error(f"Startup migration error: {e}")
@@ -142,3 +143,23 @@ def _migrate_api_key_column_size(db):
                         print("Migrated api_secret column from VARCHAR(500) to TEXT")
                     except Exception as e:
                         print(f"Could not migrate api_secret column: {e}")
+
+
+def _migrate_user_products_tables(db):
+    """
+    Migration to create user_products and user_product_suppliers tables.
+    These tables are created by db.create_all() but this migration ensures
+    they exist and handles any schema updates.
+    """
+    inspector = inspect(db.engine)
+    table_names = inspector.get_table_names()
+
+    # Tables will be created by db.create_all() if they don't exist
+    # This migration is mainly for documentation and future schema changes
+    if 'user_products' not in table_names or 'user_product_suppliers' not in table_names:
+        # Tables don't exist yet, will be created by db.create_all()
+        print("User products tables will be created by db.create_all()")
+        return
+
+    # Future schema migrations can be added here
+    print("User products tables exist")

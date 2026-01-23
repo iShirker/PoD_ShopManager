@@ -185,6 +185,15 @@ export const productsApi = {
     api.post('/products/switch/bulk', { product_ids: productIds, target_supplier: targetSupplier }),
   getTypes: () => api.get('/products/types'),
   findMatches: (productId: number) => api.get(`/products/match/${productId}`),
+  // User product list
+  getUserProducts: (params?: { page?: number; per_page?: number; search?: string; category?: string; supplier?: string }) =>
+    api.get('/products/user/list', { params }),
+  getSupplierCatalog: (connectionId: number, params?: { page?: number; per_page?: number; search?: string; category?: string }) =>
+    api.get(`/products/user/catalog/${connectionId}`, { params }),
+  addUserProduct: (data: { supplier_connection_id: number; supplier_product_id: number; product_name?: string }) =>
+    api.post('/products/user/add', data),
+  deleteUserProduct: (productId: number) => api.delete(`/products/user/${productId}`),
+  getProductSuppliers: (productId: number) => api.get(`/products/user/${productId}/suppliers`),
 }
 
 // Templates API

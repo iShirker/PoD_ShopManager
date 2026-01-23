@@ -693,12 +693,14 @@ def get_supplier_catalog(connection_id):
                         normalized_product_category = None
                     
                     # Filter by category: if category is specified, only include matching products
+                    # Note: Categories were already collected from API in first pass above
                     if category is not None:
                         # Compare normalized values (case-insensitive for better matching)
-                        if normalized_product_category and normalized_product_category.lower() != category.lower():
-                            continue
-                        elif not normalized_product_category:
-                            # If product has no category but we're filtering by category, skip it
+                        if normalized_product_category:
+                            if normalized_product_category.lower() != category.lower():
+                                continue
+                        else:
+                            # If product has no category but we're filtering by a specific category, skip it
                             continue
                     
                     # Add to categories set (will be used for dropdown)

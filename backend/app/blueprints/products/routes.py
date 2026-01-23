@@ -572,12 +572,34 @@ def get_supplier_catalog(connection_id):
                         current_app.logger.warning(f"Skipping non-dict product: {type(product)}")
                         continue
                     
-                    # Gelato v3 API structure: products have productUid, productNameUid, productTypeUid
-                    # We may need to fetch detailed product info, but for now try to extract what we can
+                    # Gelato v3 API structure: products have productUid, productNameUid, productTypeUid, dimensions
+                    # The /products endpoint returns minimal data - we need to fetch full product details
                     product_uid = product.get('productUid') or product.get('uid') or product.get('id')
+                    product_name_uid = product.get('productNameUid')
+                    product_type_uid = product.get('productTypeUid')
                     
-                    # Check for nested product data
-                    product_data = product.get('product') or product.get('productData') or product.get('data') or product
+                    # Try to fetch full product details for better info
+                    # Fetch details for all products on current page (limited by per_page, typically 20)
+                    product_details = None
+                    try:
+                        if product_uid:
+                            from app.services.suppliers.gelato import GelatoService
+                            detail_service = GelatoService(
+                                api_key=connection.api_key,
+                                access_token=connection.access_token
+                            )
+                            product_details = detail_service.get_product(product_uid)
+                            current_app.logger.debug(f"Fetched Gelato product details for {product_uid}")
+                    except Exception as detail_error:
+                        current_app.logger.warning(f"Could not fetch Gelato product details for {product_uid}: {str(detail_error)}")
+                        product_details = None
+                    
+                    # Use product details if available, otherwise use the basic product data
+                    product_data = product_details if product_details else product
+                    
+                    # Check for nested product data in the details
+                    if isinstance(product_data, dict):
+                        product_data = product_data.get('product') or product_data.get('data') or product_data
                     
                     # Apply search filter
                     if search:
@@ -586,7 +608,10 @@ def get_supplier_catalog(connection_id):
                             product_data.get('title') or 
                             product_data.get('name') or 
                             product_data.get('productName') or
+                            product_data.get('displayName') or
                             product.get('productName') or
+                            # Use productNameUid as fallback (e.g., "canvas" -> "Canvas")
+                            (product_name_uid.replace('_', ' ').title() if product_name_uid else None) or
                             str(product_uid) if product_uid else ''
                         )
                         product_type = (
@@ -594,6 +619,8 @@ def get_supplier_catalog(connection_id):
                             product_data.get('type') or
                             product_data.get('product_type') or
                             product.get('productType') or
+                            # Use productTypeUid as fallback
+                            (product_type_uid.replace('_', ' ').title() if product_type_uid else None) or
                             ''
                         )
                         brand = product_data.get('brand') or product.get('brand') or ''
@@ -669,14 +696,18 @@ def get_supplier_catalog(connection_id):
                                     break
                     
                     # Extract name - try multiple fields from product_data first
+                    # For Gelato, productNameUid might be the product name (e.g., "canvas")
                     product_name = (
                         product_data.get('title') or 
                         product_data.get('name') or 
                         product_data.get('productName') or
+                        product_data.get('displayName') or
                         product.get('productName') or
                         product.get('title') or 
                         product.get('name') or
-                        f"Product {product_uid}" if product_uid else 'Unknown Product'
+                        # Use productNameUid as fallback (e.g., "canvas" -> "Canvas")
+                        (product_name_uid.replace('_', ' ').title() if product_name_uid else None) or
+                        f"Product {product_uid[:20]}..." if product_uid else 'Unknown Product'
                     )
                     
                     # Extract description
@@ -690,6 +721,7 @@ def get_supplier_catalog(connection_id):
                     )
                     
                     # Extract product type
+                    # For Gelato, productTypeUid might be the type
                     product_type_value = (
                         product_data.get('productType') or 
                         product_data.get('type') or
@@ -698,8 +730,24 @@ def get_supplier_catalog(connection_id):
                         product.get('productType') or 
                         product.get('type') or
                         product.get('product_type') or
-                        product.get('model')
+                        product.get('model') or
+                        # Use productTypeUid as fallback
+                        (product_type_uid.replace('_', ' ').title() if product_type_uid else None)
                     )
+                    
+                    # Extract dimensions info for Gelato
+                    dimensions_info = []
+                    if product.get('dimensions') and isinstance(product.get('dimensions'), list):
+                        for dim in product.get('dimensions'):
+                            if isinstance(dim, dict):
+                                dim_name = dim.get('nameFormatted') or dim.get('name', '')
+                                dim_value = dim.get('valueFormatted') or dim.get('value', '')
+                                if dim_name and dim_value:
+                                    dimensions_info.append(f"{dim_name}: {dim_value}")
+                    
+                    # Add dimensions to description if we don't have a description
+                    if not product_description and dimensions_info:
+                        product_description = "; ".join(dimensions_info)
                     
                     catalog_products.append({
                         'id': None,  # Not in database yet

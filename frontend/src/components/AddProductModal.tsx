@@ -25,7 +25,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     enabled: isOpen,
   })
 
-  const connections = connectionsData?.data?.connections || []
+  const connections = connectionsData?.data?.suppliers || []
   const activeConnections = connections.filter((c: any) => c.is_connected)
 
   // Get catalog for selected connection

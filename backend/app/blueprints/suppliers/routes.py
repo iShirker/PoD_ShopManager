@@ -163,18 +163,37 @@ def connect_supplier(supplier_type):
                 response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response, 401
 
-    except Exception as e:
-        import traceback
-        current_app.logger.error(f"Supplier connection error: {str(e)}\n{traceback.format_exc()}")
+    except ValueError as e:
+        # Handle validation errors
+        current_app.logger.warning(f"Supplier connection validation error: {str(e)}")
         response = jsonify({
-            'error': f'Connection failed: {str(e)}',
+            'error': 'Invalid input',
             'details': str(e)
         })
+        frontend_url = current_app.config.get('FRONTEND_URL', '').rstrip('/')
+        if frontend_url:
+            response.headers.add('Access-Control-Allow-Origin', frontend_url)
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
+        return response, 400
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        current_app.logger.error(f"Supplier connection error: {str(e)}\n{error_trace}")
+        
+        # Create error response with CORS headers
+        response = jsonify({
+            'error': 'Connection failed',
+            'details': str(e) if current_app.config.get('DEBUG') else 'An error occurred while connecting to the supplier'
+        })
+        
         # Ensure CORS headers on error responses
         frontend_url = current_app.config.get('FRONTEND_URL', '').rstrip('/')
         if frontend_url:
             response.headers.add('Access-Control-Allow-Origin', frontend_url)
             response.headers.add('Access-Control-Allow-Credentials', 'true')
+            response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        
         return response, 500
 
     # Check if this exact API key already exists for this user

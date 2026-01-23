@@ -627,6 +627,11 @@ def printful_callback():
         stores_response = get_printful_stores(access_token)
         stores = stores_response.get('result', [])
 
+        # Get store info for account details
+        from app.services.suppliers.printful import PrintfulService
+        service = PrintfulService(access_token)
+        store_info = service.get_store_info()
+
         # Create or update supplier connection
         connection = SupplierConnection.query.filter_by(
             user_id=user_id,
@@ -645,6 +650,13 @@ def printful_callback():
         connection.is_connected = True
         connection.connection_error = None
         connection.last_sync = datetime.utcnow()
+
+        # Extract and store account information
+        if store_info:
+            connection.account_name = store_info.get('name') or 'Printful Store'
+            connection.account_email = store_info.get('email') or store_info.get('owner_email') or store_info.get('contact_email')
+            connection.account_id = str(store_info.get('id')) if store_info.get('id') else None
+            connection.store_id = str(store_info.get('id')) if store_info.get('id') else None
 
         # Store store info if available
         if stores:

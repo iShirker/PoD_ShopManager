@@ -59,6 +59,8 @@ class Config:
 
     PRINTFUL_API_KEY = os.getenv('PRINTFUL_API_KEY', '')
     PRINTFUL_API_URL = 'https://api.printful.com'
+    PRINTFUL_CLIENT_ID = os.getenv('PRINTFUL_CLIENT_ID', '')
+    PRINTFUL_CLIENT_SECRET = os.getenv('PRINTFUL_CLIENT_SECRET', '')
 
     # Frontend URL (for CORS and OAuth redirects)
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')

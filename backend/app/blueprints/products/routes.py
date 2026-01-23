@@ -683,14 +683,21 @@ def get_supplier_catalog(connection_id):
                         product.get('categoryName') or
                         product_type_uid  # Use productTypeUid as fallback category
                     )
+                    # Normalize category for comparison (strip whitespace, handle None)
+                    normalized_product_category = product_category.strip() if product_category else None
+                    
                     # Filter by category: if category is specified, only include matching products
-                    # If category is None/empty, show all products
-                    if category is not None and product_category != category:
-                        continue
+                    if category is not None:
+                        # Compare normalized values (case-insensitive for better matching)
+                        if normalized_product_category and normalized_product_category.lower() != category.lower():
+                            continue
+                        elif not normalized_product_category:
+                            # If product has no category but we're filtering by category, skip it
+                            continue
                     
                     # Add to categories set (will be used for dropdown)
-                    if product_category:
-                        all_categories.add(product_category)
+                    if normalized_product_category:
+                        all_categories.add(normalized_product_category)
                     
                     # Extract thumbnail URL - handle various formats, check both product and product_data
                     thumbnail_url = None
@@ -814,7 +821,7 @@ def get_supplier_catalog(connection_id):
                         'description': _strip_html(product_description) if product_description else None,
                         'product_type': product_type_value,
                         'brand': product_data.get('brand') or product.get('brand'),
-                        'category': product_category,
+                        'category': normalized_product_category,
                         'base_price': product_data.get('price') or product_data.get('basePrice') or product_data.get('base_price') or product.get('price') or product.get('basePrice'),
                         'currency': product_data.get('currency') or product.get('currency', 'USD'),
                         'available_sizes': product_data.get('sizes', []) or product_data.get('availableSizes', []) or product_data.get('available_sizes', []) or product.get('sizes', []) or product.get('availableSizes', []),
@@ -875,12 +882,20 @@ def get_supplier_catalog(connection_id):
                             continue
                     
                     blueprint_category = blueprint.get('category')
-                    # Filter by category: if category is specified, only include matching products
-                    if category is not None and blueprint_category != category:
-                        continue
+                    # Normalize category for comparison (strip whitespace, handle None)
+                    normalized_blueprint_category = blueprint_category.strip() if blueprint_category else None
                     
-                    if blueprint_category:
-                        all_categories.add(blueprint_category)
+                    # Filter by category: if category is specified, only include matching products
+                    if category is not None:
+                        # Compare normalized values (case-insensitive for better matching)
+                        if normalized_blueprint_category and normalized_blueprint_category.lower() != category.lower():
+                            continue
+                        elif not normalized_blueprint_category:
+                            # If product has no category but we're filtering by category, skip it
+                            continue
+                    
+                    if normalized_blueprint_category:
+                        all_categories.add(normalized_blueprint_category)
                     
                     # Extract thumbnail URL from images
                     thumbnail_url = None
@@ -900,7 +915,7 @@ def get_supplier_catalog(connection_id):
                         'description': blueprint.get('description'),  # Keep HTML for Printify
                         'product_type': blueprint.get('model') or blueprint.get('title', ''),
                         'brand': blueprint.get('brand'),
-                        'category': blueprint_category,
+                        'category': normalized_blueprint_category,
                         'base_price': None,  # Pricing varies by provider
                         'currency': 'USD',
                         'available_sizes': [],
@@ -1027,8 +1042,6 @@ def get_supplier_catalog(connection_id):
                     # Try to extract model from name if not provided (e.g., "Gildan 18000" -> "18000")
                     if not product_model and product_name and product_brand:
                         # Remove brand from name and see if there's a model number
-                        name_without_brand = product_name.replace(product_brand, '').strip()
-                        # Look for numbers that might be model
                         import re
                         model_match = re.search(r'\b(\d{4,})\b', name_without_brand)
                         if model_match:
@@ -1046,19 +1059,27 @@ def get_supplier_catalog(connection_id):
                         
                     if search:
                         search_lower = search.lower()
+                        name_without_brand = product_name.replace(product_brand, '').strip() if product_brand else product_name
                         if (search_lower not in product_name.lower() and 
                             search_lower not in (product_brand or '').lower() and
                             search_lower not in (product_model or '').lower() and
                             search_lower not in (product_type_display or '').lower()):
                             continue
                     
-                    # Filter by category: if category is specified, only include matching products
-                    # If category is None/empty, show all products
-                    if category is not None and product_category != category:
-                        continue
+                    # Normalize category for comparison (strip whitespace, handle None)
+                    normalized_product_category = product_category.strip() if product_category else None
                     
-                    if product_category:
-                        all_categories.add(product_category)
+                    # Filter by category: if category is specified, only include matching products
+                    if category is not None:
+                        # Compare normalized values (case-insensitive for better matching)
+                        if normalized_product_category and normalized_product_category.lower() != category.lower():
+                            continue
+                        elif not normalized_product_category:
+                            # If product has no category but we're filtering by category, skip it
+                            continue
+                    
+                    if normalized_product_category:
+                        all_categories.add(normalized_product_category)
                     
                     # Extract thumbnail URL
                     thumbnail_url = None
@@ -1079,7 +1100,7 @@ def get_supplier_catalog(connection_id):
                         'description': _strip_html(product.get('description')) if product.get('description') else None,
                         'product_type': product_type_display,  # "Brand Model" format
                         'brand': product_brand,
-                        'category': product_category,  # Use type_name for category
+                        'category': normalized_product_category,  # Use type_name for category
                         'base_price': None,
                         'currency': 'USD',
                         'available_sizes': [],

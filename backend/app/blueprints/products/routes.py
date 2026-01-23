@@ -883,30 +883,63 @@ def get_supplier_catalog(connection_id):
                 for blueprint in blueprints:
                     if not isinstance(blueprint, dict):
                         continue
+                    
+                    blueprint_id = blueprint.get('id')
+                    
+                    # Try to get detailed blueprint info for better category extraction
+                    blueprint_details = None
+                    try:
+                        if blueprint_id and len(catalog_products) < 10:  # Fetch details for first 10 to get categories
+                            from app.services.suppliers.printify import PrintifyService
+                            detail_service = PrintifyService(connection.api_key)
+                            blueprint_details = detail_service.get_blueprint(blueprint_id)
+                            current_app.logger.debug(f"Fetched Printify blueprint details for {blueprint_id}")
+                    except Exception as detail_error:
+                        current_app.logger.debug(f"Could not fetch Printify blueprint details for {blueprint_id}: {str(detail_error)}")
+                        blueprint_details = None
+                    
+                    # Use detailed blueprint if available, otherwise use basic blueprint
+                    blueprint_data = blueprint_details if blueprint_details else blueprint
+                    if isinstance(blueprint_data, dict):
+                        blueprint_data = blueprint_data.get('blueprint') or blueprint_data.get('data') or blueprint_data
                         
                     if search:
-                        name = blueprint.get('title', '') or blueprint.get('name', '')
+                        name = (blueprint_data.get('title') or blueprint_data.get('name') or 
+                               blueprint.get('title', '') or blueprint.get('name', ''))
                         if search.lower() not in name.lower():
                             continue
                     
                     # Extract category from blueprint - check multiple possible field names
                     blueprint_category = (
+                        blueprint_data.get('category') or
+                        blueprint_data.get('categoryName') or
+                        blueprint_data.get('category_name') or
+                        blueprint_data.get('productCategory') or
+                        blueprint_data.get('type') or
+                        blueprint_data.get('productType') or
                         blueprint.get('category') or
                         blueprint.get('categoryName') or
-                        blueprint.get('category_name') or
-                        blueprint.get('productCategory') or
-                        blueprint.get('type') or
-                        blueprint.get('productType')
+                        blueprint.get('type')
                     )
+                    
+                    # If no category found, use brand or model as fallback category
+                    if not blueprint_category:
+                        blueprint_brand = blueprint_data.get('brand') or blueprint.get('brand')
+                        blueprint_model = blueprint_data.get('model') or blueprint.get('model')
+                        if blueprint_brand:
+                            blueprint_category = f"Brand: {blueprint_brand}"
+                        elif blueprint_model:
+                            blueprint_category = f"Type: {blueprint_model}"
+                    
                     # Normalize category for comparison (strip whitespace, handle None/empty)
                     if blueprint_category:
                         normalized_blueprint_category = blueprint_category.strip() or None
                     else:
                         normalized_blueprint_category = None
                     
-                    # Log for debugging if no category found
+                    # Log for debugging if no category found (only for first few)
                     if not normalized_blueprint_category and len(catalog_products) < 3:
-                        current_app.logger.debug(f"Printify blueprint {blueprint.get('id')} has no category. Keys: {list(blueprint.keys())}")
+                        current_app.logger.debug(f"Printify blueprint {blueprint_id} has no category. Basic keys: {list(blueprint.keys())[:10]}")
                     
                     # Filter by category: if category is specified, only include matching products
                     # When category is None (All Categories), show all products

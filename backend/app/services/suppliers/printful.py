@@ -49,6 +49,10 @@ class PrintfulService:
     def get_products(self):
         """Get catalog of available products."""
         return self._request('GET', 'products')
+    
+    def get_categories(self):
+        """Get list of all product categories."""
+        return self._request('GET', 'categories')
 
     def get_product(self, product_id):
         """

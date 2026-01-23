@@ -1083,18 +1083,45 @@ def get_supplier_catalog(connection_id):
                 
                 catalog_products = []
                 all_categories = set()
+                category_id_to_name = {}  # Map category_id to category name
                 
-                # First pass: Collect ALL categories from ALL products (before filtering)
-                for product in products:
-                    if not isinstance(product, dict):
-                        continue
-                    product_category = product.get('type_name') or product.get('category') or product.get('type')
-                    if product_category:
-                        normalized_cat = product_category.strip() if product_category else None
-                        if normalized_cat:
-                            all_categories.add(normalized_cat)
+                # Fetch categories from Printful API
+                try:
+                    categories_response = service.get_categories()
+                    categories_list = []
+                    
+                    if isinstance(categories_response, list):
+                        categories_list = categories_response
+                    elif isinstance(categories_response, dict):
+                        # Categories might be nested
+                        categories_list = categories_response.get('categories', []) or categories_response.get('result', []) or categories_response.get('data', [])
+                    
+                    # Process categories and create mapping
+                    for cat in categories_list:
+                        if isinstance(cat, dict):
+                            cat_id = cat.get('id') or cat.get('category_id')
+                            cat_name = cat.get('title') or cat.get('name') or cat.get('category')
+                            if cat_name:
+                                cat_name = cat_name.strip()
+                                all_categories.add(cat_name)
+                                if cat_id:
+                                    category_id_to_name[cat_id] = cat_name
+                    
+                    current_app.logger.info(f"Printful: Fetched {len(all_categories)} categories from API, mapped {len(category_id_to_name)} category IDs")
+                except Exception as cat_error:
+                    current_app.logger.warning(f"Could not fetch Printful categories: {str(cat_error)}", exc_info=True)
+                    # Fallback: collect categories from products
+                    for product in products:
+                        if not isinstance(product, dict):
+                            continue
+                        # Check for category_id and map it, or use category fields
+                        product_category = product.get('category') or product.get('category_name') or product.get('type_name')
+                        if product_category:
+                            normalized_cat = product_category.strip() if product_category else None
+                            if normalized_cat:
+                                all_categories.add(normalized_cat)
                 
-                current_app.logger.info(f"Printful: Processing {len(products)} products, category filter: {category}, found {len(all_categories)} categories")
+                current_app.logger.info(f"Printful: Processing {len(products)} products, category filter: {category}, using {len(all_categories)} categories")
                 
                 # Second pass: Filter products and build catalog
                 for product in products:
@@ -1111,8 +1138,20 @@ def get_supplier_catalog(connection_id):
                     product_name = product.get('name', '')
                     product_brand = product.get('brand') or product.get('manufacturer')
                     product_type_value = product.get('type')  # This is the type like "DIRECT-TO-FABRIC"
-                    product_category = product.get('type_name') or product.get('category') or product.get('type')  # Category should be type_name
                     product_model = product.get('model') or product.get('model_number')
+                    
+                    # Get category - Printful products have category_id that maps to categories list
+                    product_category_id = product.get('category_id')
+                    product_category = product.get('category') or product.get('category_name') or product.get('type_name')
+                    
+                    # If we have category_id but no category name, map it using our category mapping
+                    if product_category_id and not product_category:
+                        product_category = category_id_to_name.get(product_category_id)
+                    
+                    # If still no category, check other fields (but don't use type_name as it's not a category)
+                    if not product_category:
+                        # Don't use type_name as category - that's the product type, not category
+                        pass
                     
                     # Calculate name without brand for model extraction
                     name_without_brand = product_name.replace(product_brand, '').strip() if product_brand and product_brand in product_name else product_name

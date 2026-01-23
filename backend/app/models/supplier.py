@@ -28,8 +28,9 @@ class SupplierConnection(db.Model):
     account_id = db.Column(db.String(255), nullable=True)  # Supplier's account/user ID
 
     # API credentials (encrypted in production)
-    api_key = db.Column(db.String(500), nullable=True)
-    api_secret = db.Column(db.String(500), nullable=True)
+    # Printify tokens can be 1000+ characters, so use TEXT for flexibility
+    api_key = db.Column(db.Text, nullable=True)
+    api_secret = db.Column(db.Text, nullable=True)
     access_token = db.Column(db.String(1000), nullable=True)
     refresh_token = db.Column(db.String(1000), nullable=True)
     token_expires_at = db.Column(db.DateTime, nullable=True)

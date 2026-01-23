@@ -16,6 +16,7 @@ def run_startup_migrations(db, app):
     with app.app_context():
         try:
             _migrate_supplier_connections_multiple_accounts(db)
+            _migrate_api_key_column_size(db)
             app.logger.info("Startup migrations completed successfully")
         except Exception as e:
             app.logger.error(f"Startup migration error: {e}")
@@ -93,3 +94,51 @@ def _migrate_supplier_connections_multiple_accounts(db):
                 except Exception as e:
                     # Column might already exist or other error
                     print(f"Could not add column {col_name}: {e}")
+
+
+def _migrate_api_key_column_size(db):
+    """
+    Migration to increase api_key and api_secret column sizes.
+    
+    Printify tokens can be 1000+ characters, so we need to change
+    VARCHAR(500) to TEXT to support longer tokens.
+    """
+    inspector = inspect(db.engine)
+    
+    # Check if the table exists
+    if 'supplier_connections' not in inspector.get_table_names():
+        return  # Table doesn't exist yet, will be created by db.create_all()
+    
+    # Get existing columns with their types
+    existing_columns = {col['name']: col for col in inspector.get_columns('supplier_connections')}
+    
+    with db.engine.connect() as conn:
+        # Check and migrate api_key column
+        if 'api_key' in existing_columns:
+            api_key_type = str(existing_columns['api_key']['type'])
+            # Check if it's VARCHAR(500) or similar small size
+            if 'VARCHAR' in api_key_type.upper() or 'CHARACTER VARYING' in api_key_type.upper():
+                # Check the length
+                if '500' in api_key_type or 'CHARACTER VARYING(500)' in api_key_type:
+                    try:
+                        # PostgreSQL: ALTER COLUMN ... TYPE TEXT
+                        conn.execute(text('ALTER TABLE supplier_connections ALTER COLUMN api_key TYPE TEXT'))
+                        conn.commit()
+                        print("Migrated api_key column from VARCHAR(500) to TEXT")
+                    except Exception as e:
+                        print(f"Could not migrate api_key column: {e}")
+        
+        # Check and migrate api_secret column
+        if 'api_secret' in existing_columns:
+            api_secret_type = str(existing_columns['api_secret']['type'])
+            # Check if it's VARCHAR(500) or similar small size
+            if 'VARCHAR' in api_secret_type.upper() or 'CHARACTER VARYING' in api_secret_type.upper():
+                # Check the length
+                if '500' in api_secret_type or 'CHARACTER VARYING(500)' in api_secret_type:
+                    try:
+                        # PostgreSQL: ALTER COLUMN ... TYPE TEXT
+                        conn.execute(text('ALTER TABLE supplier_connections ALTER COLUMN api_secret TYPE TEXT'))
+                        conn.commit()
+                        print("Migrated api_secret column from VARCHAR(500) to TEXT")
+                    except Exception as e:
+                        print(f"Could not migrate api_secret column: {e}")

@@ -2,8 +2,9 @@
 Product comparison and switching routes.
 Handles supplier comparison and product migration between suppliers.
 """
+import re
 from datetime import datetime
-from flask import request, jsonify, make_response
+from flask import request, jsonify, make_response, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.blueprints.products import products_bp
@@ -17,6 +18,22 @@ from app.services.comparison import (
     get_comparison_summary
 )
 from app.services.switching import switch_product_supplier
+
+
+def _strip_html(text):
+    """Strip HTML tags from text."""
+    if not text:
+        return None
+    # Remove HTML tags
+    text = re.sub(r'<[^>]+>', '', str(text))
+    # Decode common HTML entities
+    text = text.replace('&nbsp;', ' ')
+    text = text.replace('&amp;', '&')
+    text = text.replace('&lt;', '<')
+    text = text.replace('&gt;', '>')
+    text = text.replace('&quot;', '"')
+    text = text.replace('&#39;', "'")
+    return text.strip()
 
 
 @products_bp.route('/compare', methods=['GET'])
@@ -570,18 +587,34 @@ def get_supplier_catalog(connection_id):
                     elif product.get('thumbnail_url'):
                         thumbnail_url = product.get('thumbnail_url')
                     # If images is an array, get first image
-                    elif images_list:
-                        if isinstance(images_list[0], str):
-                            thumbnail_url = images_list[0]
-                        elif isinstance(images_list[0], dict):
-                            thumbnail_url = images_list[0].get('url') or images_list[0].get('imageUrl') or images_list[0].get('thumbnailUrl')
+                    elif images_list and len(images_list) > 0:
+                        first_image = images_list[0]
+                        if isinstance(first_image, str):
+                            thumbnail_url = first_image
+                        elif isinstance(first_image, dict):
+                            thumbnail_url = (
+                                first_image.get('url') or 
+                                first_image.get('src') or
+                                first_image.get('imageUrl') or 
+                                first_image.get('thumbnailUrl') or
+                                first_image.get('image') or
+                                first_image.get('thumbnail')
+                            )
+                    # Check for nested image structures (Gelato might have images in product.image or product.media)
+                    if not thumbnail_url:
+                        if product.get('media') and isinstance(product.get('media'), dict):
+                            media = product.get('media')
+                            thumbnail_url = media.get('imageUrl') or media.get('thumbnailUrl') or media.get('url')
+                        elif product.get('image') and isinstance(product.get('image'), dict):
+                            img_obj = product.get('image')
+                            thumbnail_url = img_obj.get('url') or img_obj.get('src') or img_obj.get('imageUrl')
                     
                     catalog_products.append({
                         'id': None,  # Not in database yet
                         'supplier_connection_id': connection.id,
                         'supplier_product_id': str(product.get('uid') or product.get('id') or ''),
                         'name': product.get('title') or product.get('name') or '',
-                        'description': product.get('description'),
+                        'description': _strip_html(product.get('description')) if product.get('description') else None,
                         'product_type': product.get('productType') or product.get('type'),
                         'brand': product.get('brand'),
                         'category': product_category,
@@ -666,7 +699,7 @@ def get_supplier_catalog(connection_id):
                         'supplier_product_id': str(blueprint.get('id', '')),
                         'blueprint_id': str(blueprint.get('id', '')),
                         'name': blueprint.get('title', '') or blueprint.get('name', ''),
-                        'description': blueprint.get('description'),
+                        'description': _strip_html(blueprint.get('description')) if blueprint.get('description') else None,
                         'product_type': blueprint.get('model') or blueprint.get('title', ''),
                         'brand': blueprint.get('brand'),
                         'category': blueprint_category,
@@ -713,11 +746,18 @@ def get_supplier_catalog(connection_id):
                 products_response = service.get_products()
                 
                 # Handle different response formats
+                # Note: PrintfulService._request already extracts 'result', so get_products() should return list directly
                 products = []
-                if isinstance(products_response, list):
+                if products_response is None:
+                    products = []
+                elif isinstance(products_response, list):
                     products = products_response
                 elif isinstance(products_response, dict):
+                    # Double-check in case result wasn't extracted
                     products = products_response.get('result', []) or products_response.get('data', []) or products_response.get('items', [])
+                else:
+                    current_app.logger.warning(f"Unexpected Printful products response type: {type(products_response)}")
+                    products = []
                 
                 catalog_products = []
                 all_categories = set()
@@ -754,7 +794,7 @@ def get_supplier_catalog(connection_id):
                         'supplier_connection_id': connection.id,
                         'supplier_product_id': str(product.get('id', '')),
                         'name': product.get('name', ''),
-                        'description': product.get('description'),
+                        'description': _strip_html(product.get('description')) if product.get('description') else None,
                         'product_type': product.get('type'),
                         'brand': product.get('brand'),
                         'category': product_category,

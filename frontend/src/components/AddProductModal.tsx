@@ -305,11 +305,11 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                             <h4 className="font-medium text-gray-900 mb-1 line-clamp-2">
                               {product.name}
                             </h4>
-                            {product.product_type && (
-                              <p className="text-xs text-gray-500 mb-2">{product.product_type}</p>
-                            )}
                             {product.brand && (
-                              <p className="text-xs text-gray-500 mb-2">Brand: {product.brand}</p>
+                              <p className="text-xs text-gray-500 mb-1">Brand: {product.brand}</p>
+                            )}
+                            {product.model && (
+                              <p className="text-xs text-gray-500 mb-2">Model: {product.model}</p>
                             )}
                             {product.base_price && (
                               <p className="text-sm font-medium text-gray-900 mb-3">

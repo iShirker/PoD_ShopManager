@@ -821,6 +821,11 @@ def get_supplier_catalog(connection_id):
                     if not product_description and dimensions_info:
                         product_description = "; ".join(dimensions_info)
                     
+                    # Extract model for Gelato
+                    gelato_model = (product_data.get('model') or 
+                                   product.get('model') or 
+                                   product_type_value)  # Use product_type_value as model if no separate model field
+                    
                     catalog_products.append({
                         'id': None,  # Not in database yet
                         'supplier_connection_id': connection.id,
@@ -829,6 +834,7 @@ def get_supplier_catalog(connection_id):
                         'description': _strip_html(product_description) if product_description else None,
                         'product_type': product_type_value,
                         'brand': product_data.get('brand') or product.get('brand'),
+                        'model': gelato_model,
                         'category': normalized_product_category,
                         'base_price': product_data.get('price') or product_data.get('basePrice') or product_data.get('base_price') or product.get('price') or product.get('basePrice'),
                         'currency': product_data.get('currency') or product.get('currency', 'USD'),
@@ -966,6 +972,12 @@ def get_supplier_catalog(connection_id):
                         elif isinstance(images_list[0], dict):
                             thumbnail_url = images_list[0].get('url') or images_list[0].get('src') or images_list[0].get('imageUrl')
                     
+                    # Extract model for Printify
+                    printify_model = (blueprint_data.get('model') or 
+                                     blueprint.get('model') or 
+                                     blueprint_data.get('title') or 
+                                     blueprint.get('title', ''))
+                    
                     # Only add to catalog if it passed the filter (or no filter applied)
                     catalog_products.append({
                         'id': None,
@@ -975,8 +987,9 @@ def get_supplier_catalog(connection_id):
                         'name': (blueprint_data.get('title') or blueprint_data.get('name') or 
                                 blueprint.get('title', '') or blueprint.get('name', '')),
                         'description': blueprint_data.get('description') or blueprint.get('description'),  # Keep HTML for Printify
-                        'product_type': blueprint_data.get('model') or blueprint_data.get('title') or blueprint.get('model') or blueprint.get('title', ''),
+                        'product_type': printify_model,
                         'brand': blueprint_data.get('brand') or blueprint.get('brand'),
+                        'model': printify_model,
                         'category': normalized_blueprint_category,
                         'base_price': None,  # Pricing varies by provider
                         'currency': 'USD',
@@ -1246,8 +1259,9 @@ def get_supplier_catalog(connection_id):
                         'supplier_product_id': str(product.get('id', '')),
                         'name': product_name,
                         'description': _strip_html(product.get('description')) if product.get('description') else None,
-                        'product_type': product_type_display,  # "Brand Model" format
+                        'product_type': product_type_display,  # "Brand Model" format (kept for backward compatibility)
                         'brand': product_brand,
+                        'model': product_model,  # Separate model field
                         'category': normalized_product_category,  # Use type_name for category
                         'base_price': None,
                         'currency': 'USD',

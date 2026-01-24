@@ -37,12 +37,12 @@ export default function ProductsCatalog() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Catalog</h1>
-        <p className="text-gray-500 mt-1">Browse PoD supplier catalogs and add products to My Products</p>
+        <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Catalog</h1>
+        <p className="text-muted mt-1 body-text">Browse PoD supplier catalogs and add products to My Products</p>
       </div>
 
       <div className="card card-body">
-        <h2 className="font-medium text-gray-900 mb-3">Select supplier</h2>
+        <h2 className="section-title mb-3" style={{ color: 'var(--t-main-text)' }}>Select supplier</h2>
         {activeConnections.length === 0 ? (
           <p className="text-gray-500">Connect a supplier in Suppliers to browse their catalog.</p>
         ) : (

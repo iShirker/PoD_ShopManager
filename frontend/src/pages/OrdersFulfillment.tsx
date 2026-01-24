@@ -12,8 +12,8 @@ export default function OrdersFulfillment() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Fulfillment</h1>
-        <p className="text-gray-500 mt-1">Orders pending fulfillment</p>
+        <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Fulfillment</h1>
+        <p className="text-muted mt-1 body-text">Orders pending fulfillment</p>
       </div>
       <div className="card card-body">
         {isLoading ? (

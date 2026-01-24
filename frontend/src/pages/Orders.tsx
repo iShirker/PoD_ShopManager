@@ -17,8 +17,8 @@ export default function Orders() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
-        <p className="text-gray-500 mt-1">Orders from Etsy &amp; Shopify</p>
+        <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Orders</h1>
+        <p className="text-muted mt-1 body-text">Orders from Etsy &amp; Shopify</p>
       </div>
       <div className="card card-body">
         {isLoading ? (

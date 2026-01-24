@@ -5,8 +5,11 @@
 @tailwind utilities;
 
 @layer base {
+  html { font-size: 16px; }
   body {
     @apply antialiased;
+    font-size: 1rem;
+    line-height: 1.5;
     background: var(--t-main-bg, #f1f5f9);
     color: var(--t-main-text, #0f172a);
   }
@@ -14,7 +17,8 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center px-4 py-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    font-size: 1rem;
   }
 
   .btn-primary {
@@ -40,7 +44,8 @@
   }
 
   .input {
-    @apply block w-full px-3 py-2 text-sm rounded-lg shadow-sm focus:outline-none focus:ring-2;
+    @apply block w-full px-3 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2;
+    font-size: 1rem;
     border-color: var(--t-card-border, #e2e8f0);
     background: var(--t-card-bg, #fff);
     color: var(--t-main-text, #0f172a);
@@ -49,7 +54,8 @@
   .input::placeholder { color: var(--t-muted, #64748b); }
 
   .label {
-    @apply block text-sm font-medium mb-1;
+    @apply block font-medium mb-1;
+    font-size: 1rem;
     color: var(--t-main-text, #1e293b);
   }
 
@@ -74,9 +80,22 @@
   }
   .app-logo { color: var(--t-sidebar-logo, var(--t-accent, #4f46e5)); }
   .app-sidebar .app-logo { color: var(--t-sidebar-logo); }
-  .app-sidebar .app-nav-link { color: var(--t-sidebar-text); }
+  .app-sidebar .app-nav-link {
+    color: var(--t-sidebar-text);
+    font-size: 1rem;
+    font-weight: 500;
+  }
   .app-sidebar .app-nav-link:hover { background: var(--t-sidebar-active-bg); color: var(--t-sidebar-active-text); }
-  .app-sidebar .app-nav-link.active { background: var(--t-sidebar-active-bg); color: var(--t-sidebar-active-text); font-weight: 500; }
+  .app-sidebar .app-nav-link.active { background: var(--t-sidebar-active-bg); color: var(--t-sidebar-active-text); font-weight: 600; }
+  .app-sidebar .app-nav-section {
+    color: var(--t-sidebar-text);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
   .app-main { background: var(--t-main-bg); color: var(--t-main-text); }
   .text-muted { color: var(--t-muted); }
+
+  .page-title { font-size: 1.75rem; font-weight: 700; line-height: 1.25; }
+  .section-title { font-size: 1.25rem; font-weight: 600; }
+  .body-text { font-size: 1rem; }
 }

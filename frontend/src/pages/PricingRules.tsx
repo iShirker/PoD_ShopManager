@@ -12,8 +12,8 @@ export default function PricingRules() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Price Rules</h1>
-        <p className="text-gray-500 mt-1">Per-product pricing and margin rules</p>
+        <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Price Rules</h1>
+        <p className="text-muted mt-1 body-text">Per-product pricing and margin rules</p>
       </div>
       <div className="card card-body">
         {isLoading ? (

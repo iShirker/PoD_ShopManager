@@ -102,8 +102,8 @@ export default function Profile() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
-        <p className="text-gray-500 mt-1">Manage your account settings</p>
+        <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Profile Settings</h1>
+        <p className="text-muted mt-1 body-text">Manage your account settings</p>
       </div>
 
       {/* Profile card */}
@@ -122,12 +122,12 @@ export default function Profile() {
               )}
             </div>
             <div>
-              <p className="text-lg font-medium text-gray-900">
+              <p className="text-lg font-medium body-text" style={{ color: 'var(--t-main-text)' }}>
                 {user?.first_name} {user?.last_name}
               </p>
-              <p className="text-gray-500">{user?.email}</p>
+              <p className="text-muted body-text">{user?.email}</p>
               {user?.oauth_provider && (
-                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                <span className="text-xs px-2 py-0.5 rounded body-text" style={{ background: 'var(--t-sidebar-active-bg)', color: 'var(--t-muted)' }}>
                   Signed in with {user.oauth_provider}
                 </span>
               )}

@@ -98,7 +98,10 @@ export default function SettingsBilling() {
   const displayPrice = (p: Plan) => {
     const mo = Number(p.price_monthly ?? 0)
     if (mo === 0) return { text: 'Free', sub: null }
-    if (isYearly) return { text: `$${(mo * 11).toFixed(2)}`, sub: '/yr (11 months)' }
+    if (isYearly) {
+      const yr = (mo * 11) + 0.1
+      return { text: `$${yr.toFixed(2)}`, sub: '/yr (11 months)' }
+    }
     return { text: `$${mo.toFixed(2)}`, sub: '/mo' }
   }
 
@@ -121,10 +124,10 @@ export default function SettingsBilling() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--t-main-text)' }}>
+        <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>
           Subscription & Billing
         </h1>
-        <p className="text-muted mt-1">Current plan, usage, and compare all plans</p>
+        <p className="text-muted mt-1 body-text">Current plan, usage, and compare all plans</p>
       </div>
 
       {isLoading ? (
@@ -134,14 +137,14 @@ export default function SettingsBilling() {
       ) : (
         <>
           <div className="card card-body">
-            <h2 className="font-semibold text-lg mb-2" style={{ color: 'var(--t-main-text)' }}>
+            <h2 className="section-title mb-3" style={{ color: 'var(--t-main-text)' }}>
               Current plan
             </h2>
             {plan ? (
               <div className="flex flex-wrap items-center gap-4">
                 <div>
-                  <p className="text-xl font-bold" style={{ color: 'var(--t-accent)' }}>{plan.name}</p>
-                  <p className="text-muted text-sm mt-0.5">
+                  <p className="text-xl font-bold body-text" style={{ color: 'var(--t-accent)' }}>{plan.name}</p>
+                  <p className="text-muted body-text mt-0.5">
                     {plan.price_monthly === 0
                       ? 'Free'
                       : `$${Number(plan.price_monthly ?? 0).toFixed(2)}/month`}
@@ -154,12 +157,12 @@ export default function SettingsBilling() {
           </div>
 
           <div className="card card-body overflow-x-auto">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-              <h2 className="font-semibold text-lg" style={{ color: 'var(--t-main-text)' }}>
+            <div className="flex flex-col items-center gap-4 mb-6">
+              <h2 className="section-title w-full text-center md:text-left" style={{ color: 'var(--t-main-text)' }}>
                 Compare plans
               </h2>
-              <div className="flex items-center gap-3">
-                <span className={cn('text-sm font-medium', !isYearly && 'opacity-100')} style={isYearly ? { color: 'var(--t-muted)' } : { color: 'var(--t-accent)' }}>Monthly</span>
+              <div className="flex items-center gap-3 w-full justify-center">
+                <span className={cn('text-base font-medium', !isYearly && 'opacity-100')} style={isYearly ? { color: 'var(--t-muted)' } : { color: 'var(--t-accent)' }}>Monthly</span>
                 <button
                   type="button"
                   role="switch"
@@ -178,7 +181,7 @@ export default function SettingsBilling() {
                     )}
                   />
                 </button>
-                <span className={cn('text-sm font-medium', isYearly && 'opacity-100')} style={!isYearly ? { color: 'var(--t-muted)' } : { color: 'var(--t-accent)' }}>
+                <span className={cn('text-base font-medium', isYearly && 'opacity-100')} style={!isYearly ? { color: 'var(--t-muted)' } : { color: 'var(--t-accent)' }}>
                   Yearly
                   <span className="ml-1.5 rounded bg-green-100 px-1.5 py-0.5 text-xs font-semibold text-green-800">
                     One month free!
@@ -186,31 +189,27 @@ export default function SettingsBilling() {
                 </span>
               </div>
             </div>
-            <p className="text-muted text-sm mb-5">
-              {isYearly
-                ? 'Prices × 11 (pay for 11, get 12 months). Usage limits × 12 vs monthly.'
-                : 'Monthly billing. Switch to Yearly for one month free.'}
-            </p>
 
-            <div className="min-w-[900px]">
-              <table className="w-full text-sm">
+            <div className="w-max max-w-full mx-auto">
+              <table className="table-auto body-text">
                 <thead>
                   <tr className="border-b-2" style={{ borderColor: 'var(--t-card-border)' }}>
-                    <th className="text-left py-4 pr-4 font-semibold w-56" style={{ color: 'var(--t-muted)' }}> </th>
+                    <th className="text-left py-4 pr-4 font-semibold w-52 whitespace-nowrap" style={{ color: 'var(--t-muted)', fontSize: '1rem' }}> </th>
                     {sortedPlans.map((p) => (
                       <th
                         key={p.id}
                         className={cn(
-                          'text-center py-4 px-3 font-bold min-w-[150px]',
+                          'text-center py-4 px-3 font-bold min-w-[6.5rem] max-w-[8rem]',
                           currentPlanId === p.id && 'ring-2 ring-inset'
                         )}
                         style={{
                           color: 'var(--t-main-text)',
+                          fontSize: '1rem',
                           backgroundColor: currentPlanId === p.id ? 'var(--t-sidebar-active-bg)' : undefined,
                           ['--tw-ring-color' as string]: currentPlanId === p.id ? 'var(--t-accent)' : undefined,
                         }}
                       >
-                        <div>{p.name}</div>
+                        <div className="font-semibold">{p.name}</div>
                         {currentPlanId === p.id && (
                           <span className="inline-block mt-1 rounded px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-800">
                             Your plan
@@ -219,7 +218,7 @@ export default function SettingsBilling() {
                       </th>
                     ))}
                     <th
-                      className="text-center py-4 px-3 font-bold min-w-[140px]"
+                      className="text-center py-4 px-3 font-bold min-w-[5.5rem]"
                       style={{ color: 'var(--t-main-text)', borderLeft: '2px solid var(--t-card-border)', background: 'rgba(59,130,246,0.12)' }}
                     >
                       Current usage
@@ -228,7 +227,7 @@ export default function SettingsBilling() {
                 </thead>
                 <tbody>
                   <tr className="border-b" style={{ borderColor: 'var(--t-card-border)', background: 'var(--t-sidebar-active-bg)' }}>
-                    <td className="py-3 pr-4 font-semibold" style={{ color: 'var(--t-main-text)' }}>Price</td>
+                    <td className="py-3 pr-4 font-semibold" style={{ color: 'var(--t-main-text)', fontSize: '1rem' }}>Price</td>
                     {sortedPlans.map((p) => {
                       const { text, sub } = displayPrice(p)
                       return (
@@ -253,7 +252,7 @@ export default function SettingsBilling() {
                     const usageVal = getUsage(key)
                     return (
                       <tr key={key} className="border-b" style={{ borderColor: 'var(--t-card-border)' }}>
-                        <td className="py-3 pr-4" style={{ color: 'var(--t-muted)' }}>
+                        <td className="py-3 pr-4" style={{ color: 'var(--t-muted)', fontSize: '1rem' }}>
                           {LIMIT_LABELS[key] ?? key}
                         </td>
                         {sortedPlans.map((p) => {
@@ -289,9 +288,9 @@ export default function SettingsBilling() {
                     if (!meta) return null
                     return (
                       <tr key={key} className="border-b" style={{ borderColor: 'var(--t-card-border)' }}>
-                        <td className="py-3 pr-4" style={{ color: 'var(--t-muted)' }}>
+                        <td className="py-3 pr-4" style={{ color: 'var(--t-muted)', fontSize: '1rem' }}>
                           <div className="font-medium" style={{ color: 'var(--t-main-text)' }}>{meta.label}</div>
-                          <div className="text-xs opacity-75">{meta.description}</div>
+                          <div className="text-sm opacity-75">{meta.description}</div>
                         </td>
                         {sortedPlans.map((p) => {
                           const isCurrent = currentPlanId === p.id

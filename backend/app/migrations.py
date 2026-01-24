@@ -21,6 +21,7 @@ def run_startup_migrations(db, app):
             _migrate_template_products_pricing(db)
             _migrate_subscription_and_new_tables(db, app)
             _migrate_user_preferred_theme(db)
+            _migrate_plan_names_pro_master(db)
             app.logger.info("Startup migrations completed successfully")
         except Exception as e:
             app.logger.error(f"Startup migration error: {e}")
@@ -257,7 +258,7 @@ def _migrate_subscription_and_new_tables(db, app):
             'slug': 'starter',
             'name': 'Starter',
             'price_monthly': 19.99,
-            'price_yearly': 199.90,
+            'price_yearly': 199.99,
             'limits': {
                 'stores': 1,
                 'products': 200,
@@ -273,9 +274,9 @@ def _migrate_subscription_and_new_tables(db, app):
         },
         {
             'slug': 'growth',
-            'name': 'Growth',
+            'name': 'Pro',
             'price_monthly': 49.99,
-            'price_yearly': 499.90,
+            'price_yearly': 499.99,
             'limits': {
                 'stores': 3,
                 'products': 1000,
@@ -291,9 +292,9 @@ def _migrate_subscription_and_new_tables(db, app):
         },
         {
             'slug': 'scale',
-            'name': 'Scale',
+            'name': 'Master',
             'price_monthly': 99.99,
-            'price_yearly': 999.90,
+            'price_yearly': 999.99,
             'limits': {
                 'stores': 10,
                 'products': 5000,
@@ -338,3 +339,16 @@ def _migrate_user_preferred_theme(db):
             print("Added users.preferred_theme")
         except Exception as e:
             print(f"Could not add preferred_theme: {e}")
+
+
+def _migrate_plan_names_pro_master(db):
+    """Rename Growth -> Pro, Scale -> Master in subscription_plans."""
+    if 'subscription_plans' not in inspect(db.engine).get_table_names():
+        return
+    with db.engine.connect() as conn:
+        try:
+            conn.execute(text("UPDATE subscription_plans SET name = 'Pro' WHERE slug = 'growth'"))
+            conn.execute(text("UPDATE subscription_plans SET name = 'Master' WHERE slug = 'scale'"))
+            conn.commit()
+        except Exception as e:
+            print(f"Could not migrate plan names: {e}")

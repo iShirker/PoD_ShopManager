@@ -31,12 +31,12 @@ export default function Pricing() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Profitability Calculator</h1>
-        <p className="text-gray-500 mt-1">Estimate fees and net profit by platform</p>
+        <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Profitability Calculator</h1>
+        <p className="text-muted mt-1 body-text">Estimate fees and net profit by platform</p>
       </div>
 
       <div className="card card-body max-w-lg">
-        <h2 className="font-medium text-gray-900 mb-4">Calculator</h2>
+        <h2 className="section-title mb-4" style={{ color: 'var(--t-main-text)' }}>Calculator</h2>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Platform</label>

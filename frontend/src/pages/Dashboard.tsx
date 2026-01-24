@@ -72,11 +72,11 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Welcome header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>
           Welcome back, {user.first_name || user.username || 'User'}!
         </h1>
-        <p className="text-gray-500 mt-1">
-          Here's an overview of your print on demand business
+        <p className="text-muted mt-1 body-text">
+          Here&apos;s an overview of your print on demand business
         </p>
       </div>
 
@@ -85,8 +85,8 @@ export default function Dashboard() {
         <div className="card card-body">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Connected Shops</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-muted body-text">Connected Shops</p>
+              <p className="text-xl font-bold body-text" style={{ color: 'var(--t-main-text)' }}>
                 {summaryLoading ? '-' : stats.shops_count || 0}
               </p>
             </div>
@@ -99,8 +99,8 @@ export default function Dashboard() {
         <div className="card card-body">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">POD Suppliers</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-muted body-text">POD Suppliers</p>
+              <p className="text-xl font-bold body-text" style={{ color: 'var(--t-main-text)' }}>
                 {summaryLoading ? '-' : stats.supplier_connections_count || 0}
               </p>
             </div>
@@ -113,8 +113,8 @@ export default function Dashboard() {
         <div className="card card-body">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">POD Products</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-muted body-text">POD Products</p>
+              <p className="text-xl font-bold body-text" style={{ color: 'var(--t-main-text)' }}>
                 {summaryLoading ? '-' : stats.pod_products || 0}
               </p>
             </div>
@@ -127,8 +127,8 @@ export default function Dashboard() {
         <div className="card card-body">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">Templates</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p className="text-sm text-muted body-text">Templates</p>
+              <p className="text-xl font-bold body-text" style={{ color: 'var(--t-main-text)' }}>
                 {summaryLoading ? '-' : stats.templates_count || 0}
               </p>
             </div>
@@ -143,8 +143,8 @@ export default function Dashboard() {
         {/* Connected Suppliers */}
         <div className="card">
           <div className="card-header flex items-center justify-between">
-            <h2 className="text-lg font-semibold">POD Suppliers</h2>
-            <Link to="/suppliers" className="text-sm text-primary-600 hover:text-primary-700">
+            <h2 className="section-title" style={{ color: 'var(--t-main-text)' }}>POD Suppliers</h2>
+            <Link to="/suppliers" className="text-sm font-medium body-text" style={{ color: 'var(--t-accent)' }}>
               Manage <ArrowRight className="w-4 h-4 inline" />
             </Link>
           </div>

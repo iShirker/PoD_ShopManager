@@ -29,8 +29,8 @@ export default function Listings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Listings</h1>
-        <p className="text-gray-500 mt-1">Etsy &amp; Shopify listings across your shops</p>
+        <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Listings</h1>
+        <p className="text-muted mt-1 body-text">Etsy &amp; Shopify listings across your shops</p>
       </div>
 
       <div className="flex flex-wrap gap-4">

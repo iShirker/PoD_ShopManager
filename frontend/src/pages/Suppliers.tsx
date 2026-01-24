@@ -157,8 +157,8 @@ export default function Suppliers() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">POD Suppliers</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>POD Suppliers</h1>
+          <p className="text-muted mt-1 body-text">
             Manage your print on demand supplier connections
           </p>
         </div>

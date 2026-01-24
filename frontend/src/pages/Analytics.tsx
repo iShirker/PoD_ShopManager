@@ -14,8 +14,8 @@ export default function Analytics() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Analytics Overview</h1>
-        <p className="text-gray-500 mt-1">Revenue, orders, and profitability</p>
+        <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Analytics Overview</h1>
+        <p className="text-muted mt-1 body-text">Revenue, orders, and profitability</p>
       </div>
 
       <div className="flex gap-2">
@@ -39,8 +39,8 @@ export default function Analytics() {
           <div className="card card-body">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">${Number(o.total_revenue ?? 0).toFixed(2)}</p>
+                <p className="text-sm text-muted body-text">Revenue</p>
+                <p className="text-xl font-bold body-text" style={{ color: 'var(--t-main-text)' }}>${Number(o.total_revenue ?? 0).toFixed(2)}</p>
               </div>
               <DollarSign className="w-10 h-10 text-green-500" />
             </div>
@@ -48,8 +48,8 @@ export default function Analytics() {
           <div className="card card-body">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Orders</p>
-                <p className="text-2xl font-bold text-gray-900">{o.total_orders ?? 0}</p>
+                <p className="text-sm text-muted body-text">Orders</p>
+                <p className="text-xl font-bold body-text" style={{ color: 'var(--t-main-text)' }}>{o.total_orders ?? 0}</p>
               </div>
               <ShoppingCart className="w-10 h-10 text-blue-500" />
             </div>
@@ -57,16 +57,16 @@ export default function Analytics() {
           <div className="card card-body">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Listings</p>
-                <p className="text-2xl font-bold text-gray-900">{o.listings_count ?? 0}</p>
+                <p className="text-sm text-muted body-text">Listings</p>
+                <p className="text-xl font-bold body-text" style={{ color: 'var(--t-main-text)' }}>{o.listings_count ?? 0}</p>
               </div>
             </div>
           </div>
           <div className="card card-body">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Net profit</p>
-                <p className="text-2xl font-bold text-gray-900">${Number(o.net_profit ?? 0).toFixed(2)}</p>
+                <p className="text-sm text-muted body-text">Net profit</p>
+                <p className="text-xl font-bold body-text" style={{ color: 'var(--t-main-text)' }}>${Number(o.net_profit ?? 0).toFixed(2)}</p>
               </div>
             </div>
           </div>

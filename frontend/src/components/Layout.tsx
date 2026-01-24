@@ -149,7 +149,7 @@ export default function Layout() {
             <button
               type="button"
               onClick={() => !mobile && setCollapsed((c) => ({ ...c, [section.title]: isOpen }))}
-              className="flex items-center w-full px-3 py-1.5 text-xs font-semibold text-muted uppercase tracking-wider"
+              className="app-nav-section flex items-center w-full px-3 py-1.5 uppercase tracking-wider"
             >
               {!mobile && (isOpen ? <ChevronDown className="w-4 h-4 mr-1" /> : <ChevronRight className="w-4 h-4 mr-1" />)}
               {section.title}

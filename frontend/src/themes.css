@@ -4,7 +4,7 @@
 [data-theme="1"] {
   --t-sidebar-bg: #1e293b;
   --t-sidebar-border: #334155;
-  --t-sidebar-text: #94a3b8;
+  --t-sidebar-text: #cbd5e1;
   --t-sidebar-active-bg: rgba(245,158,11,0.15);
   --t-sidebar-active-text: #f59e0b;
   --t-sidebar-logo: #f59e0b;
@@ -72,7 +72,7 @@
 [data-theme="5"] {
   --t-sidebar-bg: linear-gradient(180deg, #4f46e5 0%, #6366f1 100%);
   --t-sidebar-border: transparent;
-  --t-sidebar-text: rgba(255,255,255,0.8);
+  --t-sidebar-text: rgba(255,255,255,0.95);
   --t-sidebar-active-bg: #fff;
   --t-sidebar-active-text: #4f46e5;
   --t-sidebar-logo: #fff;
@@ -106,7 +106,7 @@
 [data-theme="7"] {
   --t-sidebar-bg: rgba(255,255,255,0.2);
   --t-sidebar-border: rgba(255,255,255,0.3);
-  --t-sidebar-text: rgba(255,255,255,0.85);
+  --t-sidebar-text: rgba(255,255,255,0.98);
   --t-sidebar-active-bg: rgba(255,255,255,0.35);
   --t-sidebar-active-text: #fff;
   --t-sidebar-logo: #fff;
@@ -140,7 +140,7 @@
 [data-theme="9"] {
   --t-sidebar-bg: #2d4a2d;
   --t-sidebar-border: transparent;
-  --t-sidebar-text: rgba(168,213,168,0.9);
+  --t-sidebar-text: #c5e8c5;
   --t-sidebar-active-bg: #3d5c3d;
   --t-sidebar-active-text: #c5e8c5;
   --t-sidebar-logo: #a8d5a8;
@@ -157,7 +157,7 @@
 [data-theme="10"] {
   --t-sidebar-bg: #18181b;
   --t-sidebar-border: #27272a;
-  --t-sidebar-text: #71717a;
+  --t-sidebar-text: #a1a1aa;
   --t-sidebar-active-bg: rgba(34,211,238,0.1);
   --t-sidebar-active-text: #22d3ee;
   --t-sidebar-logo: #22d3ee;

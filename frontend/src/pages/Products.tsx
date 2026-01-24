@@ -66,8 +66,8 @@ export default function Products() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Products</h1>
+          <p className="text-muted mt-1 body-text">
             {viewMode === 'user' 
               ? 'Manage your product list and compare prices across suppliers'
               : 'View and manage your POD products across all shops'}

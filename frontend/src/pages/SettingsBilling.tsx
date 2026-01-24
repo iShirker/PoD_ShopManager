@@ -172,7 +172,7 @@ export default function SettingsBilling() {
     if (mo === 0) return { text: 'Free', sub: null }
     if (isYearly) {
       const yr = mo * 11 + 0.1
-      return { text: `$${yr.toFixed(2)}`, sub: '/yr (11 months)' }
+      return { text: `$${yr.toFixed(2)}`, sub: '/yr' }
     }
     return { text: `$${mo.toFixed(2)}`, sub: '/mo' }
   }
@@ -213,42 +213,6 @@ export default function SettingsBilling() {
         </div>
       ) : (
         <>
-          <div className="card card-body">
-            <h2 className="section-title mb-3" style={{ color: 'var(--t-main-text)' }}>
-              Current plan
-            </h2>
-            {plan ? (
-              <div className="flex flex-wrap items-start gap-6">
-                <div>
-                  <p className="text-xl font-bold body-text" style={{ color: 'var(--t-accent)' }}>{plan.name}</p>
-                  <p className="text-muted body-text mt-0.5">
-                    {plan.price_monthly === 0
-                      ? 'Free'
-                      : `$${Number(plan.price_monthly ?? 0).toFixed(2)}/month`}
-                  </p>
-                </div>
-                {subscription?.current_period_start != null && subscription?.current_period_end != null && (
-                  <div className="flex flex-wrap gap-6 body-text">
-                    <div>
-                      <p className="text-sm text-muted">Started</p>
-                      <p className="font-medium" style={{ color: 'var(--t-main-text)' }}>
-                        {formatDate(subscription.current_period_start)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted">Expires</p>
-                      <p className="font-medium" style={{ color: 'var(--t-main-text)' }}>
-                        {formatDate(subscription.current_period_end)}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-muted">No active subscription. Using default (Starter) limits.</p>
-            )}
-          </div>
-
           <div className="card card-body overflow-x-auto">
             <div className="flex flex-col items-center gap-4 mb-6">
               <h2 className="section-title w-full text-center md:text-left" style={{ color: 'var(--t-main-text)' }}>
@@ -299,16 +263,23 @@ export default function SettingsBilling() {
               )}
             </div>
 
-            <div className="w-max max-w-full mx-auto">
-              <table className="table-auto body-text">
+            <div className="overflow-x-auto">
+              <table className="body-text w-full" style={{ tableLayout: 'fixed', width: '42rem', minWidth: '42rem' }}>
+                <colgroup>
+                  <col style={{ width: '13rem' }} />
+                  {sortedPlans.map((_, i) => (
+                    <col key={i} style={{ width: '6rem' }} />
+                  ))}
+                  <col style={{ width: '5rem' }} />
+                </colgroup>
                 <thead>
                   <tr className="border-b-2" style={{ borderColor: 'var(--t-card-border)' }}>
-                    <th className="text-left py-4 pr-4 font-semibold w-52 whitespace-nowrap" style={{ color: 'var(--t-muted)', fontSize: '1rem' }}> </th>
+                    <th className="text-left py-4 pr-4 font-semibold whitespace-nowrap" style={{ color: 'var(--t-muted)', fontSize: '1rem' }}> </th>
                     {sortedPlans.map((p) => (
                       <th
                         key={p.id}
                         className={cn(
-                          'text-center py-4 px-3 font-bold min-w-[6.5rem] max-w-[8rem]',
+                          'text-center py-4 px-3 font-bold',
                           currentPlanId === p.id && 'ring-2 ring-inset'
                         )}
                         style={{
@@ -327,7 +298,7 @@ export default function SettingsBilling() {
                       </th>
                     ))}
                     <th
-                      className="text-center py-4 px-3 font-bold min-w-[5.5rem]"
+                      className="text-center py-4 px-3 font-bold"
                       style={{ color: 'var(--t-main-text)', borderLeft: '2px solid var(--t-card-border)', background: 'rgba(59,130,246,0.12)' }}
                     >
                       Current usage
@@ -456,25 +427,40 @@ export default function SettingsBilling() {
             </div>
           </div>
 
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex flex-wrap items-baseline gap-4 body-text">
-              {proratedCredit > 0 && (
-                <span className="text-muted">
-                  Prorated credit: −{currency} {proratedCredit.toFixed(2)}
-                </span>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2">
+            <div className="body-text" style={{ color: 'var(--t-muted)' }}>
+              {plan ? (
+                <>
+                  <span className="font-semibold" style={{ color: 'var(--t-main-text)' }}>Current plan:</span>{' '}
+                  {plan.name}
+                  {' '}({plan.price_monthly === 0 ? 'Free' : `$${Number(plan.price_monthly ?? 0).toFixed(2)}/month`}).
+                  {' '}Start: {formatDate(subscription?.current_period_start)}.
+                  {' '}Expires: {formatDate(subscription?.current_period_end)}.
+                </>
+              ) : (
+                <>No active subscription. Using default (Starter) limits.</>
               )}
-              <span className="text-xl font-bold" style={{ color: 'var(--t-main-text)' }}>
-                Total: {currency} {total.toFixed(2)}
-              </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setPaymentOpen(true)}
-              disabled={!allowed || !selectedPlanId || total <= 0 || !selectablePlanIds.includes(selectedPlanId)}
-              className="btn-primary"
-            >
-              Pay {currency} {total.toFixed(2)}
-            </button>
+            <div className="flex flex-col items-stretch sm:items-end gap-2">
+              <div className="flex flex-wrap items-baseline gap-4 body-text">
+                {proratedCredit > 0 && (
+                  <span className="text-muted">
+                    Prorated credit: −{currency} {proratedCredit.toFixed(2)}
+                  </span>
+                )}
+                <span className="text-xl font-bold" style={{ color: 'var(--t-main-text)' }}>
+                  Total: {currency} {total.toFixed(2)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPaymentOpen(true)}
+                disabled={!allowed || !selectedPlanId || total <= 0 || !selectablePlanIds.includes(selectedPlanId)}
+                className="btn-primary"
+              >
+                Pay {currency} {total.toFixed(2)}
+              </button>
+            </div>
           </div>
 
           <PaymentModal

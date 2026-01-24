@@ -529,9 +529,13 @@ export default function SettingsBilling() {
                 <>
                   <span className="font-semibold" style={{ color: 'var(--t-main-text)' }}>Current plan:</span>{' '}
                   {plan.name}
-                  <span className={subscription?.auto_renew !== false ? ' text-green-600' : ' text-amber-600'}>
-                    {' '}({subscription?.auto_renew !== false ? 'Auto-renew' : 'Cancelled'})
-                  </span>
+                  {plan.slug === 'free_trial' ? (
+                    <span className="text-muted"> (No renewal)</span>
+                  ) : (
+                    <span className={subscription?.auto_renew !== false ? ' text-green-600' : ' text-amber-600'}>
+                      {' '}({subscription?.auto_renew !== false ? 'Auto-renew' : 'Cancelled'})
+                    </span>
+                  )}
                   {' '}({plan.price_monthly === 0 ? 'Free' : `$${Number(plan.price_monthly ?? 0).toFixed(2)}/month`}).
                   {' '}Start: {formatDate(subscription?.current_period_start)}.
                   {' '}Expires: {formatDate(subscription?.current_period_end)}.

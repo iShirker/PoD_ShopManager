@@ -12,6 +12,7 @@ from app.models import (
     Shop,
     UserProduct,
     Product,
+    User,
 )
 from app import db
 
@@ -29,10 +30,12 @@ def billing():
     Returns current plan, usage, and available plans.
     """
     user_id = get_jwt_identity()
+    user = User.query.get(user_id)
     sub = UserSubscription.query.filter_by(user_id=user_id).first()
     plan = sub.plan if sub else None
     if not plan:
         plan = SubscriptionPlan.query.filter_by(slug='starter').first()
+    free_trial_used = user is not None and user.free_trial_used_at is not None
 
     year, month = date.today().year, date.today().month
     period_start = date(year, month, 1)
@@ -71,6 +74,7 @@ def billing():
         'plan': plan.to_dict() if plan else None,
         'usage': usage.to_dict(),
         'plans': [p.to_dict() for p in plans],
+        'free_trial_used': free_trial_used,
     })
 
 
@@ -155,6 +159,62 @@ def billing_quote():
         'total': total,
         'currency': 'USD',
         'allowed': allowed,
+    })
+
+
+TRIAL_DAYS = 14
+
+
+@settings_bp.route('/billing/start-trial', methods=['POST'])
+@jwt_required()
+def billing_start_trial():
+    """
+    Start free trial. Creates a subscription to free_trial plan.
+    Allowed only once per user (free_trial_used_at).
+    """
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    if user.free_trial_used_at is not None:
+        return jsonify({'error': 'Free trial already used'}), 400
+
+    plan = SubscriptionPlan.query.filter_by(slug='free_trial', is_active=True).first()
+    if not plan:
+        return jsonify({'error': 'Free trial plan not available'}), 404
+
+    now = datetime.utcnow()
+    period_end = now + timedelta(days=TRIAL_DAYS)
+
+    sub = UserSubscription.query.filter_by(user_id=user_id).first()
+    if sub:
+        sub.plan_id = plan.id
+        sub.status = 'active'
+        sub.billing_interval = 'monthly'
+        sub.current_period_start = now
+        sub.current_period_end = period_end
+        sub.trial_ends_at = period_end
+        sub.canceled_at = None
+        sub.auto_renew = True
+    else:
+        sub = UserSubscription(
+            user_id=user_id,
+            plan_id=plan.id,
+            status='active',
+            billing_interval='monthly',
+            current_period_start=now,
+            current_period_end=period_end,
+            trial_ends_at=period_end,
+            auto_renew=True,
+        )
+        db.session.add(sub)
+
+    user.free_trial_used_at = now
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Free trial started',
+        'subscription': sub.to_dict(),
     })
 
 

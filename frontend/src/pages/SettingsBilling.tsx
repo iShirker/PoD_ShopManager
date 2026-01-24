@@ -115,10 +115,24 @@ export default function SettingsBilling() {
     },
   })
 
+  const startTrialMutation = useMutation({
+    mutationFn: () => settingsApi.billingStartTrial(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings-billing'] })
+      toast.success('Free trial started')
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      toast.error(msg ?? 'Failed to start free trial')
+    },
+  })
+
   const subscription = data?.data?.subscription as Subscription | null | undefined
   const plan = data?.data?.plan as Plan | undefined
   const usage = (data?.data?.usage ?? {}) as Record<string, number>
   const plans = (data?.data?.plans ?? []) as Plan[]
+  const freeTrialUsed = !!data?.data?.free_trial_used
+  const noSubscription = subscription == null
 
   const currentPlanId = plan?.id ?? null
   const currentInterval = (subscription?.billing_interval ?? 'monthly').toLowerCase() as 'monthly' | 'yearly'
@@ -134,6 +148,13 @@ export default function SettingsBilling() {
       }),
     [plans]
   )
+
+  const pickerPlans = useMemo(() => {
+    const paid = sortedPlans.filter((p) => (p.price_monthly ?? 0) > 0)
+    if (freeTrialUsed) return paid
+    const trial = sortedPlans.find((p) => p.slug === 'free_trial')
+    return trial ? [trial, ...paid] : paid
+  }, [sortedPlans, freeTrialUsed])
 
   const currentIdx = sortedPlans.findIndex((p) => p.id === currentPlanId)
   const selectablePlanIds = useMemo(() => {
@@ -157,16 +178,21 @@ export default function SettingsBilling() {
   }, [sortedPlans, currentIdx, isYearlyForced])
 
   useEffect(() => {
+    if (noSubscription) return
     if (selectedPlanId != null) return
     const firstSelectable = selectablePlanIds[0]
     if (firstSelectable != null) setSelectedPlanId(firstSelectable)
     else if (currentPlanId != null) setSelectedPlanId(currentPlanId)
-  }, [currentPlanId, selectedPlanId, selectablePlanIds])
+  }, [noSubscription, currentPlanId, selectedPlanId, selectablePlanIds])
 
   const { data: quoteData } = useQuery({
     queryKey: ['billing-quote', selectedPlanId, isYearly],
     queryFn: () => settingsApi.billingQuote({ plan_id: selectedPlanId!, interval: isYearly ? 'yearly' : 'monthly' }),
-    enabled: !!selectedPlanId && selectablePlanIds.includes(selectedPlanId),
+    enabled:
+      !!selectedPlanId &&
+      (noSubscription
+        ? (sortedPlans.find((p) => p.id === selectedPlanId)?.price_monthly ?? 0) > 0
+        : selectablePlanIds.includes(selectedPlanId)),
   })
 
   const quote = quoteData?.data
@@ -215,18 +241,115 @@ export default function SettingsBilling() {
     setInterval((i) => (i === 'monthly' ? 'yearly' : 'monthly'))
   }
 
+  const handleSubscribe = (p: Plan) => {
+    setSelectedPlanId(p.id)
+    setPaymentOpen(true)
+  }
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>
-          Subscription & Billing
+          {noSubscription ? 'Choose your plan' : 'Subscription & Billing'}
         </h1>
-        <p className="text-muted mt-1 body-text">Current plan, usage, and compare all plans</p>
+        <p className="text-muted mt-1 body-text">
+          {noSubscription ? 'Start with a free trial or pick a plan.' : 'Current plan, usage, and compare all plans'}
+        </p>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-muted" />
+        </div>
+      ) : noSubscription ? (
+        <div className="card card-body">
+          <h2 className="section-title mb-4" style={{ color: 'var(--t-main-text)' }}>
+            Plans
+          </h2>
+          <div className="flex items-center gap-3 justify-center mb-6">
+            <span
+              className="text-base font-medium"
+              style={!isYearly ? { color: 'var(--t-accent)' } : { color: 'var(--t-muted)' }}
+            >
+              Monthly
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isYearly}
+              onClick={() => setInterval((i) => (i === 'monthly' ? 'yearly' : 'monthly'))}
+              className="relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2"
+              style={{ background: isYearly ? 'var(--t-accent)' : 'var(--t-card-border)', ['--tw-ring-color' as string]: 'var(--t-accent)' }}
+            >
+              <span
+                className={cn(
+                  'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition',
+                  isYearly ? 'translate-x-5' : 'translate-x-1'
+                )}
+              />
+            </button>
+            <span
+              className="text-base font-medium"
+              style={isYearly ? { color: 'var(--t-accent)' } : { color: 'var(--t-muted)' }}
+            >
+              Yearly
+              <span className="ml-1.5 rounded bg-green-100 px-1.5 py-0.5 text-xs font-semibold text-green-800">
+                One month free!
+              </span>
+            </span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {pickerPlans.map((p) => {
+              const isTrial = p.slug === 'free_trial'
+              const { text, sub } = displayPrice(p)
+              return (
+                <div
+                  key={p.id}
+                  className="rounded-xl border-2 p-5 flex flex-col gap-3"
+                  style={{ borderColor: 'var(--t-card-border)', background: 'var(--t-card-bg)' }}
+                >
+                  <div className="font-bold body-text" style={{ color: 'var(--t-main-text)', fontSize: '1.125rem' }}>
+                    {p.name}
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="font-bold" style={{ color: 'var(--t-accent)' }}>{text}</span>
+                    {sub && <span className="text-muted text-sm">{sub}</span>}
+                  </div>
+                  {isTrial && (
+                    <p className="text-muted body-text text-sm">
+                      14 days · 1 store, 50 products, 20 listings, 100 orders, 20 mockups
+                    </p>
+                  )}
+                  {isTrial ? (
+                    <button
+                      type="button"
+                      onClick={() => startTrialMutation.mutate()}
+                      disabled={startTrialMutation.isPending}
+                      className="btn-primary mt-auto"
+                    >
+                      {startTrialMutation.isPending ? 'Starting…' : 'Start free trial'}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleSubscribe(p)}
+                      className="btn-primary mt-auto"
+                    >
+                      Subscribe
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <PaymentModal
+            open={paymentOpen}
+            onClose={() => setPaymentOpen(false)}
+            total={total}
+            currency={currency}
+            planName={selectedPlan?.name ?? ''}
+            interval={isYearly ? 'yearly' : 'monthly'}
+          />
         </div>
       ) : (
         <>

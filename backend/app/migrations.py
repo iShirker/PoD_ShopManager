@@ -24,6 +24,7 @@ def run_startup_migrations(db, app):
             _migrate_plan_names_pro_master(db)
             _migrate_subscription_billing_interval(db)
             _migrate_subscription_auto_renew(db)
+            _migrate_user_free_trial_used_at(db)
             app.logger.info("Startup migrations completed successfully")
         except Exception as e:
             app.logger.error(f"Startup migration error: {e}")
@@ -388,3 +389,20 @@ def _migrate_subscription_auto_renew(db):
             print("Added user_subscriptions.auto_renew")
         except Exception as e:
             print(f"Could not add auto_renew: {e}")
+
+
+def _migrate_user_free_trial_used_at(db):
+    """Add free_trial_used_at to users."""
+    inspector = inspect(db.engine)
+    if 'users' not in inspector.get_table_names():
+        return
+    existing = {c['name'] for c in inspector.get_columns('users')}
+    if 'free_trial_used_at' in existing:
+        return
+    with db.engine.connect() as conn:
+        try:
+            conn.execute(text('ALTER TABLE users ADD COLUMN free_trial_used_at TIMESTAMP'))
+            conn.commit()
+            print("Added users.free_trial_used_at")
+        except Exception as e:
+            print(f"Could not add free_trial_used_at: {e}")

@@ -30,6 +30,9 @@ class User(db.Model):
     # UI preference
     preferred_theme = db.Column(db.String(20), nullable=True, default='5')
 
+    # Subscription
+    free_trial_used_at = db.Column(db.DateTime, nullable=True)
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

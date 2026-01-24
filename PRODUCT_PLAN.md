@@ -8,6 +8,7 @@ This document outlines the product evaluation, feature prioritization, and compr
 - **[SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md)** – Three tiers (Starter $19.99, Growth $49.99, Scale $99.99), free trial, limits, overages.
 - **[COMPETITOR_ANALYSIS.md](./COMPETITOR_ANALYSIS.md)** – Competitors by feature, pricing, financials, differentiation.
 - **[FEATURE_PRIORITY.md](./FEATURE_PRIORITY.md)** – Feature–plan mapping and MVP scope.
+- **[UI_MENU_STRUCTURE.md](./UI_MENU_STRUCTURE.md)** – Sidebar and route structure for all planned features.
 
 ---
 

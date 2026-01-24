@@ -23,6 +23,7 @@ def run_startup_migrations(db, app):
             _migrate_user_preferred_theme(db)
             _migrate_plan_names_pro_master(db)
             _migrate_subscription_billing_interval(db)
+            _migrate_subscription_auto_renew(db)
             app.logger.info("Startup migrations completed successfully")
         except Exception as e:
             app.logger.error(f"Startup migration error: {e}")
@@ -370,3 +371,20 @@ def _migrate_subscription_billing_interval(db):
             print("Added user_subscriptions.billing_interval")
         except Exception as e:
             print(f"Could not add billing_interval: {e}")
+
+
+def _migrate_subscription_auto_renew(db):
+    """Add auto_renew to user_subscriptions."""
+    inspector = inspect(db.engine)
+    if 'user_subscriptions' not in inspector.get_table_names():
+        return
+    existing = {c['name'] for c in inspector.get_columns('user_subscriptions')}
+    if 'auto_renew' in existing:
+        return
+    with db.engine.connect() as conn:
+        try:
+            conn.execute(text('ALTER TABLE user_subscriptions ADD COLUMN auto_renew BOOLEAN NOT NULL DEFAULT 1'))
+            conn.commit()
+            print("Added user_subscriptions.auto_renew")
+        except Exception as e:
+            print(f"Could not add auto_renew: {e}")

@@ -327,6 +327,7 @@ export const settingsApi = {
   billing: () => api.get('/settings/billing'),
   billingQuote: (data: { plan_id: number; interval: 'monthly' | 'yearly' }) =>
     api.post('/settings/billing/quote', data),
+  billingCancel: () => api.post('/settings/billing/cancel'),
 }
 
 export default api

@@ -156,3 +156,21 @@ def billing_quote():
         'currency': 'USD',
         'allowed': allowed,
     })
+
+
+@settings_bp.route('/billing/cancel', methods=['POST'])
+@jwt_required()
+def billing_cancel():
+    """
+    Disable auto-renew for the current subscription.
+    """
+    user_id = get_jwt_identity()
+    sub = UserSubscription.query.filter_by(user_id=user_id).first()
+    if not sub:
+        return jsonify({'error': 'No active subscription'}), 404
+    sub.auto_renew = False
+    db.session.commit()
+    return jsonify({
+        'message': 'Auto-renew disabled',
+        'subscription': sub.to_dict(),
+    })

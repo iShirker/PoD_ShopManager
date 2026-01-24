@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 import { settingsApi } from '../lib/api'
 import { cn } from '../lib/utils'
 import { Loader2, Check, X } from 'lucide-react'
@@ -20,6 +21,7 @@ type Subscription = {
   id?: number
   plan_id?: number
   billing_interval?: string
+  auto_renew?: boolean
   current_period_start?: string
   current_period_end?: string
   plan?: Plan
@@ -92,10 +94,25 @@ export default function SettingsBilling() {
   const [interval, setInterval] = useState<'monthly' | 'yearly'>('monthly')
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
   const [paymentOpen, setPaymentOpen] = useState(false)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
+  const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
     queryKey: ['settings-billing'],
     queryFn: () => settingsApi.billing(),
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: () => settingsApi.billingCancel(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings-billing'] })
+      setCancelConfirmOpen(false)
+      toast.success('Auto-renew disabled')
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      toast.error(msg ?? 'Failed to cancel auto-renew')
+    },
   })
 
   const subscription = data?.data?.subscription as Subscription | null | undefined
@@ -433,6 +450,11 @@ export default function SettingsBilling() {
                 <>
                   <span className="font-semibold" style={{ color: 'var(--t-main-text)' }}>Current plan:</span>{' '}
                   {plan.name}
+                  {subscription != null && (
+                    <span className={subscription?.auto_renew !== false ? 'text-green-600' : 'text-amber-600'}>
+                      {' '}({subscription?.auto_renew !== false ? 'Auto-renew' : 'Cancelled'})
+                    </span>
+                  )}
                   {' '}({plan.price_monthly === 0 ? 'Free' : `$${Number(plan.price_monthly ?? 0).toFixed(2)}/month`}).
                   {' '}Start: {formatDate(subscription?.current_period_start)}.
                   {' '}Expires: {formatDate(subscription?.current_period_end)}.
@@ -452,16 +474,64 @@ export default function SettingsBilling() {
                   Total: {currency} {total.toFixed(2)}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setPaymentOpen(true)}
-                disabled={!allowed || !selectedPlanId || total <= 0 || !selectablePlanIds.includes(selectedPlanId)}
-                className="btn-primary"
-              >
-                Pay {currency} {total.toFixed(2)}
-              </button>
+              <div className="flex flex-wrap gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setPaymentOpen(true)}
+                  disabled={!allowed || !selectedPlanId || total <= 0 || !selectablePlanIds.includes(selectedPlanId)}
+                  className="btn-primary"
+                >
+                  Pay {currency} {total.toFixed(2)}
+                </button>
+                {subscription != null && subscription?.auto_renew !== false && (
+                  <button
+                    type="button"
+                    onClick={() => setCancelConfirmOpen(true)}
+                    className="btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+
+          {cancelConfirmOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/50" onClick={() => setCancelConfirmOpen(false)} aria-hidden="true" />
+              <div
+                className="relative card w-full max-w-md p-6"
+                style={{ background: 'var(--t-card-bg)', borderColor: 'var(--t-card-border)' }}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="cancel-confirm-title"
+              >
+                <h3 id="cancel-confirm-title" className="section-title mb-2" style={{ color: 'var(--t-main-text)' }}>
+                  Disable auto-renew?
+                </h3>
+                <p className="body-text text-muted mb-4">
+                  Your subscription will remain active until the end of the current period ({formatDate(subscription?.current_period_end)}). After that, it will not renew.
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setCancelConfirmOpen(false)}
+                    className="btn-secondary"
+                  >
+                    Keep auto-renew
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => cancelMutation.mutate()}
+                    disabled={cancelMutation.isPending}
+                    className="btn-danger"
+                  >
+                    {cancelMutation.isPending ? 'Disabling…' : 'Disable auto-renew'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <PaymentModal
             open={paymentOpen}

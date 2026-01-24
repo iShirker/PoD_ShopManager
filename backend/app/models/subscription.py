@@ -48,6 +48,7 @@ class UserSubscription(db.Model):
     current_period_start = db.Column(db.DateTime, nullable=False)
     current_period_end = db.Column(db.DateTime, nullable=False)
     canceled_at = db.Column(db.DateTime, nullable=True)
+    auto_renew = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -65,6 +66,7 @@ class UserSubscription(db.Model):
             'current_period_start': self.current_period_start.isoformat() if self.current_period_start else None,
             'current_period_end': self.current_period_end.isoformat() if self.current_period_end else None,
             'canceled_at': self.canceled_at.isoformat() if self.canceled_at else None,
+            'auto_renew': self.auto_renew if self.auto_renew is not None else True,
         }
 
 

@@ -27,20 +27,17 @@ type Subscription = {
   plan?: Plan
 }
 
-const LIMIT_LABELS: Record<string, string> = {
-  stores: 'Stores',
-  products: 'Products',
-  listings: 'Listings',
-  orders_monthly: 'Orders',
-  orders_total: 'Orders',
-  mockups_monthly: 'Mockups',
-  mockups_total: 'Mockups',
-  storage_mb: 'Storage (MB)',
-  seo_suggestions_monthly: 'SEO suggestions',
-  seo_suggestions: 'SEO suggestions',
-  discount_programs: 'Discount programs',
-  discount_products: 'Discount products',
-}
+const LIMIT_GROUPS: { label: string; keys: string[] }[] = [
+  { label: 'Stores', keys: ['stores'] },
+  { label: 'Products', keys: ['products'] },
+  { label: 'Listings', keys: ['listings'] },
+  { label: 'Orders', keys: ['orders_monthly', 'orders_total'] },
+  { label: 'Mockups', keys: ['mockups_monthly', 'mockups_total'] },
+  { label: 'Storage (MB)', keys: ['storage_mb'] },
+  { label: 'SEO suggestions', keys: ['seo_suggestions_monthly', 'seo_suggestions'] },
+  { label: 'Discount programs', keys: ['discount_programs'] },
+  { label: 'Discount products', keys: ['discount_products'] },
+]
 
 const USAGE_KEY_MAP: Record<string, string> = {
   stores: 'stores_connected',
@@ -215,9 +212,10 @@ export default function SettingsBilling() {
   const proratedCredit = typeof quote?.prorated_credit === 'number' ? quote.prorated_credit : 0
   const currency = quote?.currency ?? 'USD'
 
-  const allLimitKeys = Array.from(
-    new Set(plans.flatMap((p) => (p.limits ? Object.keys(p.limits) : [])))
-  ).filter((k) => LIMIT_LABELS[k]).sort()
+  const allLimitGroups = useMemo(() => {
+    const planKeys = new Set(plans.flatMap((p) => (p.limits ? Object.keys(p.limits) : [])))
+    return LIMIT_GROUPS.filter((g) => g.keys.some((k) => planKeys.has(k)))
+  }, [plans])
   const allFeatureKeys = Array.from(
     new Set(plans.flatMap((p) => (p.features ? Object.keys(p.features) : [])))
   ).filter((k) => FEATURE_META[k])
@@ -232,9 +230,10 @@ export default function SettingsBilling() {
     return { text: `$${mo.toFixed(2)}`, sub: '/mo' }
   }
 
-  const displayLimit = (val: number | undefined) => {
+  const displayLimit = (val: number | undefined, limitKey?: string) => {
     if (val == null) return '—'
-    const n = isYearly ? val * 12 : val
+    const isMonthly = limitKey?.endsWith('_monthly')
+    const n = isYearly && isMonthly ? val * 12 : val
     return n.toLocaleString()
   }
 
@@ -246,6 +245,17 @@ export default function SettingsBilling() {
       v = Math.round(Number(usage.storage_bytes) / 1024 / 1024)
     }
     return v
+  }
+
+  const getLimitForPlan = (p: Plan, keys: string[]): { value: number; key: string } | undefined => {
+    for (const k of keys) {
+      const v = p.limits?.[k]
+      if (v != null) {
+        const n = typeof v === 'number' ? v : Number(v)
+        return { value: n, key: k }
+      }
+    }
+    return undefined
   }
 
   const handleToggleInterval = () => {
@@ -446,15 +456,15 @@ export default function SettingsBilling() {
                     })}
                     <td className="py-3 px-3 text-center text-muted" style={{ background: 'rgba(59,130,246,0.08)' }}>—</td>
                   </tr>
-                  {allLimitKeys.map((key) => {
-                    const usageVal = getUsage(key)
+                  {allLimitGroups.map((group) => {
+                    const usageVal = getUsage(group.keys[0])
                     return (
-                      <tr key={key} className="border-b" style={{ borderColor: 'var(--t-card-border)' }}>
+                      <tr key={group.label} className="border-b" style={{ borderColor: 'var(--t-card-border)' }}>
                         <td className="py-3 pr-4" style={{ color: 'var(--t-muted)', fontSize: '1rem' }}>
-                          {LIMIT_LABELS[key] ?? key}
+                          {group.label}
                         </td>
                         {sortedPlans.map((p) => {
-                          const limitVal = p.limits?.[key] as number | undefined
+                          const limit = getLimitForPlan(p, group.keys)
                           const isCurrent = effectiveCurrentPlanId === p.id
                           const inaccessible = isTrialInaccessible(p)
                           return (
@@ -470,7 +480,7 @@ export default function SettingsBilling() {
                                 color: 'var(--t-main-text)',
                               }}
                             >
-                              {displayLimit(limitVal)}
+                              {displayLimit(limit?.value, limit?.key)}
                             </td>
                           )
                         })}

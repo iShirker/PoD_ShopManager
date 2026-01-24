@@ -195,7 +195,7 @@ def billing_start_trial():
         sub.current_period_end = period_end
         sub.trial_ends_at = period_end
         sub.canceled_at = None
-        sub.auto_renew = True
+        sub.auto_renew = False  # Free trial cannot renew
     else:
         sub = UserSubscription(
             user_id=user_id,
@@ -205,7 +205,7 @@ def billing_start_trial():
             current_period_start=now,
             current_period_end=period_end,
             trial_ends_at=period_end,
-            auto_renew=True,
+            auto_renew=False,  # Free trial cannot renew
         )
         db.session.add(sub)
 

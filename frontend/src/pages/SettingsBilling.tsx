@@ -179,15 +179,29 @@ export default function SettingsBilling() {
 
   const selectedPlan = sortedPlans.find((p) => p.id === selectedPlanId)
   const effectiveCurrentPlanId = subscription != null ? currentPlanId : null
+  const isOnFreeTrial = subscription != null && plan?.slug === 'free_trial'
+  const starterPlan = sortedPlans.find((p) => p.slug === 'starter')
   const selectedIsTrial = selectedPlan?.slug === 'free_trial'
   const selectedIsPaid = selectedPlan != null && (selectedPlan.price_monthly ?? 0) > 0
 
+  const isTrialInaccessible = (p: Plan) =>
+    p.slug === 'free_trial' && (freeTrialUsed || effectiveCurrentPlanId === p.id)
+
   useEffect(() => {
+    if (isOnFreeTrial) {
+      setInterval('monthly')
+      const tid = sortedPlans.find((p) => p.slug === 'free_trial')?.id
+      const onTrialOrNone = selectedPlanId == null || selectedPlanId === tid
+      if (onTrialOrNone && (starterPlan ?? selectablePlanIds[0])) {
+        setSelectedPlanId(starterPlan?.id ?? selectablePlanIds[0] ?? null)
+      }
+      return
+    }
     if (selectedPlanId != null) return
     const firstSelectable = selectablePlanIds[0]
     if (firstSelectable != null) setSelectedPlanId(firstSelectable)
     else if (currentPlanId != null) setSelectedPlanId(currentPlanId)
-  }, [currentPlanId, selectedPlanId, selectablePlanIds])
+  }, [isOnFreeTrial, starterPlan?.id, selectablePlanIds, currentPlanId, selectedPlanId, sortedPlans])
 
   const { data: quoteData } = useQuery({
     queryKey: ['billing-quote', selectedPlanId, isYearly],
@@ -261,59 +275,17 @@ export default function SettingsBilling() {
               Compare plans
             </h2>
             <div className="flex justify-center overflow-x-auto">
-              <table className="body-text" style={{ tableLayout: 'fixed', width: '42rem', minWidth: '42rem' }}>
+              <table className="body-text" style={{ tableLayout: 'fixed', width: '45rem', minWidth: '45rem' }}>
                 <colgroup>
                   <col style={{ width: '13rem' }} />
                   {sortedPlans.map((_, i) => (
                     <col key={i} style={{ width: '6rem' }} />
                   ))}
-                  <col style={{ width: '5rem' }} />
+                  <col style={{ width: '8rem' }} />
                 </colgroup>
                 <thead>
                   <tr className="border-b-2" style={{ borderColor: 'var(--t-card-border)' }}>
-                    <th className="text-left py-4 pr-4 font-semibold whitespace-nowrap" style={{ color: 'var(--t-muted)', fontSize: '1rem' }}> </th>
-                    {sortedPlans.map((p) => {
-                      const isCurrent = effectiveCurrentPlanId === p.id
-                      const trialUsed = p.slug === 'free_trial' && freeTrialUsed
-                      const inaccessible = trialUsed
-                      return (
-                        <th
-                          key={p.id}
-                          className={cn(
-                            'text-center py-4 px-3 font-bold',
-                            isCurrent && 'ring-2 ring-inset',
-                            inaccessible && 'opacity-50 pointer-events-none select-none'
-                          )}
-                          style={{
-                            color: 'var(--t-main-text)',
-                            fontSize: '1rem',
-                            backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : inaccessible ? 'rgba(0,0,0,0.05)' : undefined,
-                            ['--tw-ring-color' as string]: isCurrent ? 'var(--t-accent)' : undefined,
-                          }}
-                        >
-                          <div className="font-semibold">{p.name}</div>
-                          {isCurrent && (
-                            <span className="inline-block mt-1 rounded px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-800">
-                              Your plan
-                            </span>
-                          )}
-                          {trialUsed && (
-                            <span className="inline-block mt-1 rounded px-2 py-0.5 text-xs text-muted">Already used</span>
-                          )}
-                        </th>
-                      )
-                    })}
                     <th
-                      className="text-center py-4 px-3 font-bold"
-                      style={{ color: 'var(--t-main-text)', borderLeft: '2px solid var(--t-card-border)', background: 'rgba(59,130,246,0.12)' }}
-                    >
-                      Current usage
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b-2" style={{ borderColor: 'var(--t-card-border)' }}>
-                    <td
                       colSpan={2 + sortedPlans.length}
                       className="py-4 text-center align-middle"
                       style={{ borderColor: 'var(--t-card-border)' }}
@@ -367,15 +339,57 @@ export default function SettingsBilling() {
                           <p className="text-sm text-muted">Your plan is yearly. Upgrades must be yearly.</p>
                         )}
                       </div>
-                    </td>
+                    </th>
                   </tr>
+                  <tr className="border-b-2" style={{ borderColor: 'var(--t-card-border)' }}>
+                    <th className="text-left py-4 pr-4 font-semibold whitespace-nowrap" style={{ color: 'var(--t-muted)', fontSize: '1rem' }}> </th>
+                    {sortedPlans.map((p) => {
+                      const isCurrent = effectiveCurrentPlanId === p.id
+                      const inaccessible = isTrialInaccessible(p)
+                      const showAlreadyUsed = inaccessible && freeTrialUsed && !isCurrent
+                      return (
+                        <th
+                          key={p.id}
+                          className={cn(
+                            'text-center py-4 px-3 font-bold',
+                            isCurrent && 'ring-2 ring-inset',
+                            inaccessible && 'opacity-50 pointer-events-none select-none'
+                          )}
+                          style={{
+                            color: 'var(--t-main-text)',
+                            fontSize: '1rem',
+                            backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : inaccessible ? 'rgba(0,0,0,0.05)' : undefined,
+                            ['--tw-ring-color' as string]: isCurrent ? 'var(--t-accent)' : undefined,
+                          }}
+                        >
+                          <div className="font-semibold">{p.name}</div>
+                          {isCurrent && (
+                            <span className="inline-block mt-1 rounded px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-800">
+                              Your plan
+                            </span>
+                          )}
+                          {showAlreadyUsed && (
+                            <span className="inline-block mt-1 rounded px-2 py-0.5 text-xs text-muted">Already used</span>
+                          )}
+                        </th>
+                      )
+                    })}
+                    <th
+                      className="text-center py-4 px-3 font-bold whitespace-nowrap"
+                      style={{ color: 'var(--t-main-text)', borderLeft: '2px solid var(--t-card-border)', background: 'rgba(59,130,246,0.12)' }}
+                    >
+                      Current usage
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
                   <tr className="border-b" style={{ borderColor: 'var(--t-card-border)' }}>
                     <td className="py-3 pr-4 font-semibold" style={{ color: 'var(--t-muted)', fontSize: '1rem' }}>Select</td>
                     {sortedPlans.map((p) => {
                       const isCurrent = effectiveCurrentPlanId === p.id
                       const canSelect = selectablePlanIds.includes(p.id)
                       const isSelected = selectedPlanId === p.id
-                      const inaccessible = p.slug === 'free_trial' && freeTrialUsed
+                      const inaccessible = isTrialInaccessible(p)
                       return (
                         <td
                           key={p.id}
@@ -414,7 +428,7 @@ export default function SettingsBilling() {
                     {sortedPlans.map((p) => {
                       const { text, sub } = displayPrice(p)
                       const isCurrent = effectiveCurrentPlanId === p.id
-                      const inaccessible = p.slug === 'free_trial' && freeTrialUsed
+                      const inaccessible = isTrialInaccessible(p)
                       return (
                         <td
                           key={p.id}
@@ -442,7 +456,7 @@ export default function SettingsBilling() {
                         {sortedPlans.map((p) => {
                           const limitVal = p.limits?.[key] as number | undefined
                           const isCurrent = effectiveCurrentPlanId === p.id
-                          const inaccessible = p.slug === 'free_trial' && freeTrialUsed
+                          const inaccessible = isTrialInaccessible(p)
                           return (
                             <td
                               key={p.id}
@@ -480,7 +494,7 @@ export default function SettingsBilling() {
                         </td>
                         {sortedPlans.map((p) => {
                           const isCurrent = effectiveCurrentPlanId === p.id
-                          const inaccessible = p.slug === 'free_trial' && freeTrialUsed
+                          const inaccessible = isTrialInaccessible(p)
                           return (
                             <td
                               key={p.id}

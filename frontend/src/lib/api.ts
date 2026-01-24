@@ -99,7 +99,7 @@ export const authApi = {
 // Users API
 export const usersApi = {
   getProfile: () => api.get('/users/me'),
-  updateProfile: (data: Partial<{ username: string; first_name: string; last_name: string; avatar_url: string }>) =>
+  updateProfile: (data: Partial<{ username: string; first_name: string; last_name: string; avatar_url: string; preferred_theme: string }>) =>
     api.patch('/users/me', data),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.put('/users/me/password', { current_password: currentPassword, new_password: newPassword }),

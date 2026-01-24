@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useThemeStore } from './themeStore'
 
 interface User {
   id: number
@@ -9,6 +10,7 @@ interface User {
   last_name?: string
   avatar_url?: string
   oauth_provider?: string
+  preferred_theme?: string
   is_verified: boolean
   created_at: string
   last_login?: string
@@ -39,21 +41,25 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (accessToken, refreshToken) =>
         set({ accessToken, refreshToken }),
 
-      login: (user, accessToken, refreshToken) =>
-        set({
+      login: (user, accessToken, refreshToken) => {
+        useThemeStore.getState().hydrateFromUser(user.preferred_theme)
+        return set({
           user,
           accessToken,
           refreshToken,
           isAuthenticated: true,
-        }),
+        })
+      },
 
-      logout: () =>
-        set({
+      logout: () => {
+        useThemeStore.getState().setTheme('5')
+        return set({
           user: null,
           accessToken: null,
           refreshToken: null,
           isAuthenticated: false,
-        }),
+        })
+      },
 
       updateUser: (updates) =>
         set((state) => ({

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>POD Manager — Style Switcher</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: #1e293b; color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; }
+    .bar { display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: #0f172a; border-bottom: 1px solid #334155; flex-wrap: wrap; }
+    .bar label { font-size: 0.9rem; font-weight: 500; color: #94a3b8; }
+    select { padding: 8px 12px; border-radius: 8px; border: 1px solid #475569; background: #1e293b; color: #e2e8f0; font-size: 0.9rem; font-family: inherit; cursor: pointer; min-width: 200px; }
+    select:hover { border-color: #64748b; }
+    select:focus { outline: none; border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.25); }
+    .frame-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    iframe { flex: 1; width: 100%; border: none; display: block; min-height: 600px; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <label for="style">Style:</label>
+    <select id="style">
+      <option value="01-dark-amber.html">1 — Dark + Amber</option>
+      <option value="02-warm-earthy.html">2 — Warm & Earthy</option>
+      <option value="03-minimal-bw.html">3 — Minimal B&W</option>
+      <option value="04-soft-pastels.html">4 — Soft Pastels</option>
+      <option value="05-bold-ecommerce.html">5 — Bold E‑commerce</option>
+      <option value="06-retro-vintage.html">6 — Retro / Vintage</option>
+      <option value="07-glassmorphism.html">7 — Glassmorphism</option>
+      <option value="08-monochrome-green.html">8 — Monochrome + Green</option>
+      <option value="09-forest-nature.html">9 — Forest / Nature</option>
+      <option value="10-neon-tech.html">10 — Neon / Tech</option>
+    </select>
+  </div>
+  <div class="frame-wrap">
+    <iframe id="preview" src="01-dark-amber.html" title="Style preview"></iframe>
+  </div>
+  <script>
+    (function () {
+      var sel = document.getElementById('style');
+      var iframe = document.getElementById('preview');
+      sel.addEventListener('change', function () {
+        iframe.src = sel.value;
+      });
+    })();
+  </script>
+</body>
+</html>

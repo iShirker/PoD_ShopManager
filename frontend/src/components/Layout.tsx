@@ -149,7 +149,7 @@ export default function Layout() {
             <button
               type="button"
               onClick={() => !mobile && setCollapsed((c) => ({ ...c, [section.title]: isOpen }))}
-              className="flex items-center w-full px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider"
+              className="flex items-center w-full px-3 py-1.5 text-xs font-semibold text-muted uppercase tracking-wider"
             >
               {!mobile && (isOpen ? <ChevronDown className="w-4 h-4 mr-1" /> : <ChevronRight className="w-4 h-4 mr-1" />)}
               {section.title}
@@ -162,10 +162,8 @@ export default function Layout() {
                   onClick={() => mobile && setSidebarOpen(false)}
                   className={({ isActive: active }) =>
                     cn(
-                      'flex items-center px-3 py-2 text-sm font-medium rounded-lg mt-0.5',
-                      active
-                        ? 'bg-primary-50 text-primary-700'
-                        : 'text-gray-700 hover:bg-gray-100'
+                      'app-nav-link flex items-center px-3 py-2 text-sm font-medium rounded-lg mt-0.5',
+                      active && 'active'
                     )
                   }
                 >
@@ -185,14 +183,14 @@ export default function Layout() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen app-main">
       {/* Mobile sidebar */}
       <div className={cn('fixed inset-0 z-50 lg:hidden', sidebarOpen ? 'block' : 'hidden')}>
-        <div className="fixed inset-0 bg-gray-900/50" onClick={() => setSidebarOpen(false)} />
-        <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-xl flex flex-col">
-          <div className="flex items-center justify-between px-4 py-4 border-b shrink-0">
-            <span className="text-xl font-bold text-primary-600">POD Manager</span>
-            <button onClick={() => setSidebarOpen(false)}>
+        <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-y-0 left-0 w-64 app-sidebar shadow-xl flex flex-col min-w-0">
+          <div className="flex items-center justify-between px-4 py-4 border-b shrink-0" style={{ borderColor: 'var(--t-sidebar-border)' }}>
+            <span className="text-xl font-bold app-logo">POD Manager</span>
+            <button onClick={() => setSidebarOpen(false)} className="app-nav-link p-1 rounded">
               <X className="w-6 h-6" />
             </button>
           </div>
@@ -202,46 +200,37 @@ export default function Layout() {
 
       {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-1 bg-white border-r border-gray-200 min-w-0">
-          <div className="flex items-center h-16 px-6 border-b border-gray-200 shrink-0">
-            <span className="text-xl font-bold text-primary-600">POD Manager</span>
+        <div className="flex flex-col flex-1 app-sidebar min-w-0">
+          <div className="flex items-center h-16 px-6 border-b shrink-0" style={{ borderColor: 'var(--t-sidebar-border)' }}>
+            <span className="text-xl font-bold app-logo">POD Manager</span>
           </div>
           {renderNav(false)}
-          <div className="p-4 border-t border-gray-200 shrink-0">
+          <div className="p-4 border-t shrink-0" style={{ borderColor: 'var(--t-sidebar-border)' }}>
             <div className="flex items-center">
-              <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--t-sidebar-active-bg)', color: 'var(--t-sidebar-active-text)' }}>
                 {user?.avatar_url ? (
                   <img src={user.avatar_url} alt="" className="w-10 h-10 rounded-full" />
                 ) : (
-                  <User className="w-5 h-5 text-primary-600" />
+                  <User className="w-5 h-5" />
                 )}
               </div>
               <div className="ml-3 flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-700 truncate">
+                <p className="text-sm font-medium truncate" style={{ color: 'var(--t-sidebar-active-text)' }}>
                   {user?.first_name || user?.username || user?.email}
                 </p>
-                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                <p className="text-xs truncate text-muted">{user?.email}</p>
               </div>
             </div>
             <div className="mt-4 flex flex-col gap-2">
-              <NavLink
-                to="/profile"
-                className="flex items-center justify-center gap-2 btn-secondary text-xs py-2"
-              >
+              <NavLink to="/profile" className="flex items-center justify-center gap-2 btn-secondary text-xs py-2">
                 <User className="w-4 h-4" />
                 Profile
               </NavLink>
-              <NavLink
-                to="/settings/billing"
-                className="flex items-center justify-center gap-2 btn-secondary text-xs py-2"
-              >
+              <NavLink to="/settings/billing" className="flex items-center justify-center gap-2 btn-secondary text-xs py-2">
                 <CreditCard className="w-4 h-4" />
                 Billing
               </NavLink>
-              <button
-                onClick={handleLogout}
-                className="flex items-center justify-center gap-2 btn-secondary text-xs py-2 text-red-600 hover:text-red-700"
-              >
+              <button onClick={handleLogout} className="flex items-center justify-center gap-2 btn-secondary text-xs py-2 text-red-600 hover:text-red-700">
                 <LogOut className="w-4 h-4" />
                 Logout
               </button>
@@ -251,13 +240,13 @@ export default function Layout() {
       </div>
 
       <div className="lg:pl-64">
-        <div className="sticky top-0 z-40 flex items-center h-16 px-4 bg-white border-b border-gray-200 lg:hidden">
-          <button onClick={() => setSidebarOpen(true)}>
+        <div className="sticky top-0 z-40 flex items-center h-16 px-4 card lg:hidden" style={{ borderRadius: 0, borderLeft: 'none', borderTop: 'none', borderRight: 'none' }}>
+          <button onClick={() => setSidebarOpen(true)} className="app-nav-link p-1 rounded">
             <Menu className="w-6 h-6" />
           </button>
-          <span className="ml-4 text-lg font-semibold text-primary-600">POD Manager</span>
+          <span className="ml-4 text-lg font-semibold app-logo">POD Manager</span>
         </div>
-        <main className="p-6">
+        <main className="app-main p-6">
           <Outlet />
         </main>
       </div>

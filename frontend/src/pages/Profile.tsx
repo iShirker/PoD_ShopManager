@@ -1,15 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
+import { useThemeStore, THEME_NAMES, type ThemeId } from '../store/themeStore'
 import { usersApi } from '../lib/api'
-import { User, Mail, Lock, Save } from 'lucide-react'
+import { User, Mail, Lock, Save, Palette } from 'lucide-react'
 
 interface ProfileForm {
   first_name: string
   last_name: string
   username: string
+  preferred_theme: ThemeId
 }
 
 interface PasswordForm {
@@ -18,8 +20,12 @@ interface PasswordForm {
   confirm_password: string
 }
 
+const THEME_IDS: ThemeId[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
+
 export default function Profile() {
   const { user, updateUser } = useAuthStore()
+  const theme = useThemeStore((s) => s.theme)
+  const setTheme = useThemeStore((s) => s.setTheme)
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<'profile' | 'password'>('profile')
 
@@ -27,13 +33,23 @@ export default function Profile() {
     register: registerProfile,
     handleSubmit: handleProfileSubmit,
     formState: { errors: profileErrors },
+    setValue: setProfileValue,
   } = useForm<ProfileForm>({
     defaultValues: {
       first_name: user?.first_name || '',
       last_name: user?.last_name || '',
       username: user?.username || '',
+      preferred_theme: (user?.preferred_theme as ThemeId) || theme,
     },
   })
+
+  useEffect(() => {
+    setProfileValue('first_name', user?.first_name || '')
+    setProfileValue('last_name', user?.last_name || '')
+    setProfileValue('username', user?.username || '')
+    const t = (user?.preferred_theme as ThemeId) || theme
+    setProfileValue('preferred_theme', t)
+  }, [user, theme, setProfileValue])
 
   const {
     register: registerPassword,
@@ -46,9 +62,15 @@ export default function Profile() {
   const newPassword = watch('new_password')
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data: ProfileForm) => usersApi.updateProfile(data),
+    mutationFn: (data: ProfileForm) => usersApi.updateProfile({
+      first_name: data.first_name,
+      last_name: data.last_name,
+      username: data.username,
+      preferred_theme: data.preferred_theme,
+    }),
     onSuccess: (response) => {
       updateUser(response.data.user)
+      setTheme((response.data.user.preferred_theme as ThemeId) || '5')
       toast.success('Profile updated successfully')
       queryClient.invalidateQueries({ queryKey: ['user-summary'] })
     },
@@ -185,16 +207,41 @@ export default function Profile() {
               <div>
                 <label className="label">Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" />
                   <input
                     type="email"
                     value={user?.email || ''}
                     disabled
-                    className="input pl-10 bg-gray-50"
+                    className="input pl-10 opacity-70"
                   />
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-muted">
                   Email cannot be changed here
+                </p>
+              </div>
+
+              <div>
+                <label className="label flex items-center gap-2">
+                  <Palette className="w-4 h-4" />
+                  Visual style
+                </label>
+                <select
+                  {...registerProfile('preferred_theme')}
+                  className="input"
+                  onChange={(e) => {
+                    const v = e.target.value as ThemeId
+                    setProfileValue('preferred_theme', v)
+                    setTheme(v)
+                  }}
+                >
+                  {THEME_IDS.map((id) => (
+                    <option key={id} value={id}>
+                      {id} — {THEME_NAMES[id]}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-muted">
+                  App theme. Saved with profile.
                 </p>
               </div>
 

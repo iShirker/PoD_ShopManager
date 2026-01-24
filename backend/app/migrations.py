@@ -20,6 +20,7 @@ def run_startup_migrations(db, app):
             _migrate_user_products_tables(db)
             _migrate_template_products_pricing(db)
             _migrate_subscription_and_new_tables(db, app)
+            _migrate_user_preferred_theme(db)
             app.logger.info("Startup migrations completed successfully")
         except Exception as e:
             app.logger.error(f"Startup migration error: {e}")
@@ -320,3 +321,20 @@ def _migrate_subscription_and_new_tables(db, app):
         db.session.add(plan)
     db.session.commit()
     app.logger.info("Seeded subscription_plans")
+
+
+def _migrate_user_preferred_theme(db):
+    """Add preferred_theme to users if missing."""
+    inspector = inspect(db.engine)
+    if 'users' not in inspector.get_table_names():
+        return
+    existing = {c['name'] for c in inspector.get_columns('users')}
+    if 'preferred_theme' in existing:
+        return
+    with db.engine.connect() as conn:
+        try:
+            conn.execute(text('ALTER TABLE users ADD COLUMN preferred_theme VARCHAR(20)'))
+            conn.commit()
+            print("Added users.preferred_theme")
+        except Exception as e:
+            print(f"Could not add preferred_theme: {e}")

@@ -27,6 +27,9 @@ class User(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     is_verified = db.Column(db.Boolean, default=False)
 
+    # UI preference
+    preferred_theme = db.Column(db.String(20), nullable=True, default='5')
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -69,6 +72,7 @@ class User(db.Model):
             'oauth_provider': self.oauth_provider,
             'is_active': self.is_active,
             'is_verified': self.is_verified,
+            'preferred_theme': self.preferred_theme or '5',
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None
         }

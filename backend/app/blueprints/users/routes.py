@@ -59,10 +59,18 @@ def update_profile():
         return jsonify({'error': 'No data provided'}), 400
 
     # Updatable fields
-    allowed_fields = ['username', 'first_name', 'last_name', 'avatar_url']
+    allowed_fields = ['username', 'first_name', 'last_name', 'avatar_url', 'preferred_theme']
 
     for field in allowed_fields:
         if field in data:
+            # Validate preferred_theme
+            if field == 'preferred_theme':
+                raw = data[field]
+                val = str(raw).strip() if raw is not None else ''
+                if val and val not in ('1', '2', '3', '4', '5', '6', '7', '8', '9', '10'):
+                    return jsonify({'error': 'Invalid theme. Use 1–10.'}), 400
+                data[field] = val or '5'
+
             # Validate username uniqueness
             if field == 'username' and data[field]:
                 existing = User.query.filter(

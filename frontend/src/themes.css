@@ -1,0 +1,171 @@
+/* Theme variables for styles 1–10. data-theme set on <html>. Default 5. */
+
+/* 1 — Dark + Amber */
+[data-theme="1"] {
+  --t-sidebar-bg: #1e293b;
+  --t-sidebar-border: #334155;
+  --t-sidebar-text: #94a3b8;
+  --t-sidebar-active-bg: rgba(245,158,11,0.15);
+  --t-sidebar-active-text: #f59e0b;
+  --t-sidebar-logo: #f59e0b;
+  --t-main-bg: #0f172a;
+  --t-main-text: #f8fafc;
+  --t-muted: #64748b;
+  --t-card-bg: #1e293b;
+  --t-card-border: #334155;
+  --t-accent: #f59e0b;
+  --t-accent-fg: #0f172a;
+}
+
+/* 2 — Warm & Earthy */
+[data-theme="2"] {
+  --t-sidebar-bg: #f5efe6;
+  --t-sidebar-border: #e8dfd2;
+  --t-sidebar-text: #5c5248;
+  --t-sidebar-active-bg: #e8d5c4;
+  --t-sidebar-active-text: #a34a1e;
+  --t-sidebar-logo: #c45c26;
+  --t-main-bg: #faf7f2;
+  --t-main-text: #2d2822;
+  --t-muted: #7a6f65;
+  --t-card-bg: #fff;
+  --t-card-border: #e8dfd2;
+  --t-accent: #c45c26;
+  --t-accent-fg: #fff;
+}
+
+/* 3 — Minimal B&W */
+[data-theme="3"] {
+  --t-sidebar-bg: #fafafa;
+  --t-sidebar-border: #e5e5e5;
+  --t-sidebar-text: #737373;
+  --t-sidebar-active-bg: transparent;
+  --t-sidebar-active-text: #0a0a0a;
+  --t-sidebar-logo: #0a0a0a;
+  --t-main-bg: #fff;
+  --t-main-text: #0a0a0a;
+  --t-muted: #737373;
+  --t-card-bg: #fafafa;
+  --t-card-border: #e5e5e5;
+  --t-accent: #0a0a0a;
+  --t-accent-fg: #fff;
+}
+
+/* 4 — Soft Pastels */
+[data-theme="4"] {
+  --t-sidebar-bg: #fff;
+  --t-sidebar-border: #e9e5f0;
+  --t-sidebar-text: #6b5b7a;
+  --t-sidebar-active-bg: #e8e0f5;
+  --t-sidebar-active-text: #5c4a8a;
+  --t-sidebar-logo: #7c62b5;
+  --t-main-bg: #f8f5ff;
+  --t-main-text: #2d2538;
+  --t-muted: #8b7d9a;
+  --t-card-bg: #fff;
+  --t-card-border: #e9e5f0;
+  --t-accent: #7c62b5;
+  --t-accent-fg: #fff;
+}
+
+/* 5 — Bold E‑commerce (default) */
+[data-theme="5"] {
+  --t-sidebar-bg: linear-gradient(180deg, #4f46e5 0%, #6366f1 100%);
+  --t-sidebar-border: transparent;
+  --t-sidebar-text: rgba(255,255,255,0.8);
+  --t-sidebar-active-bg: #fff;
+  --t-sidebar-active-text: #4f46e5;
+  --t-sidebar-logo: #fff;
+  --t-main-bg: #f1f5f9;
+  --t-main-text: #0f172a;
+  --t-muted: #64748b;
+  --t-card-bg: #fff;
+  --t-card-border: transparent;
+  --t-accent: #4f46e5;
+  --t-accent-fg: #fff;
+}
+
+/* 6 — Retro / Vintage */
+[data-theme="6"] {
+  --t-sidebar-bg: #ebe6da;
+  --t-sidebar-border: #d4cdbc;
+  --t-sidebar-text: #5c5344;
+  --t-sidebar-active-bg: rgba(107,91,61,0.08);
+  --t-sidebar-active-text: #4a3f2f;
+  --t-sidebar-logo: #6b5b3d;
+  --t-main-bg: #f7f4ed;
+  --t-main-text: #2d261a;
+  --t-muted: #7a6f5c;
+  --t-card-bg: #fff;
+  --t-card-border: #d4cdbc;
+  --t-accent: #6b5b3d;
+  --t-accent-fg: #fff;
+}
+
+/* 7 — Glassmorphism */
+[data-theme="7"] {
+  --t-sidebar-bg: rgba(255,255,255,0.2);
+  --t-sidebar-border: rgba(255,255,255,0.3);
+  --t-sidebar-text: rgba(255,255,255,0.85);
+  --t-sidebar-active-bg: rgba(255,255,255,0.35);
+  --t-sidebar-active-text: #fff;
+  --t-sidebar-logo: #fff;
+  --t-main-bg: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  --t-main-text: #fff;
+  --t-muted: rgba(255,255,255,0.8);
+  --t-card-bg: rgba(255,255,255,0.2);
+  --t-card-border: rgba(255,255,255,0.3);
+  --t-accent: #fff;
+  --t-accent-fg: #6366f1;
+}
+
+/* 8 — Monochrome + Green */
+[data-theme="8"] {
+  --t-sidebar-bg: #fff;
+  --t-sidebar-border: #e5e5e5;
+  --t-sidebar-text: #737373;
+  --t-sidebar-active-bg: #f0fdf4;
+  --t-sidebar-active-text: #16a34a;
+  --t-sidebar-logo: #171717;
+  --t-main-bg: #fafafa;
+  --t-main-text: #171717;
+  --t-muted: #737373;
+  --t-card-bg: #fff;
+  --t-card-border: #e5e5e5;
+  --t-accent: #16a34a;
+  --t-accent-fg: #fff;
+}
+
+/* 9 — Forest / Nature */
+[data-theme="9"] {
+  --t-sidebar-bg: #2d4a2d;
+  --t-sidebar-border: transparent;
+  --t-sidebar-text: rgba(168,213,168,0.9);
+  --t-sidebar-active-bg: #3d5c3d;
+  --t-sidebar-active-text: #c5e8c5;
+  --t-sidebar-logo: #a8d5a8;
+  --t-main-bg: #f0f7f0;
+  --t-main-text: #1a2e1a;
+  --t-muted: #5a6e5a;
+  --t-card-bg: #fff;
+  --t-card-border: #c5dcc5;
+  --t-accent: #2d4a2d;
+  --t-accent-fg: #c5e8c5;
+}
+
+/* 10 — Neon / Tech */
+[data-theme="10"] {
+  --t-sidebar-bg: #18181b;
+  --t-sidebar-border: #27272a;
+  --t-sidebar-text: #71717a;
+  --t-sidebar-active-bg: rgba(34,211,238,0.1);
+  --t-sidebar-active-text: #22d3ee;
+  --t-sidebar-logo: #22d3ee;
+  --t-main-bg: #0c0c0f;
+  --t-main-text: #fafafa;
+  --t-muted: #71717a;
+  --t-card-bg: #18181b;
+  --t-card-border: #27272a;
+  --t-accent: #22d3ee;
+  --t-accent-fg: #0c0c0f;
+}

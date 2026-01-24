@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>POD Manager — Visual Style Samples</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: #f8fafc; color: #1e293b; padding: 48px 24px; }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 8px; }
+    p { color: #64748b; margin: 0 0 32px; font-size: 1rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+    a { display: block; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-decoration: none; color: #1e293b; font-weight: 500; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    a:hover { border-color: #3b82f6; box-shadow: 0 4px 12px rgba(59,130,246,0.15); }
+    a span { display: block; font-size: 0.8rem; color: #64748b; font-weight: 400; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Visual style samples</h1>
+    <p>Choose a style to preview. Each link opens a mock dashboard (sidebar + stats + table) with a different look. Pick one to use as the basis for the app.</p>
+    <div class="grid">
+      <a href="01-dark-amber.html">1 — Dark + Amber<br><span>Dark theme, amber accent</span></a>
+      <a href="02-warm-earthy.html">2 — Warm & Earthy<br><span>Terracotta/cream, cozy</span></a>
+      <a href="03-minimal-bw.html">3 — Minimal B&amp;W<br><span>Black/white, sharp, lots of space</span></a>
+      <a href="04-soft-pastels.html">4 — Soft Pastels<br><span>Lavender/mauve, rounded, gentle</span></a>
+      <a href="05-bold-ecommerce.html">5 — Bold E‑commerce<br><span>Indigo sidebar, card-heavy</span></a>
+      <a href="06-retro-vintage.html">6 — Retro / Vintage<br><span>Cream, serif headings, subtle</span></a>
+      <a href="07-glassmorphism.html">7 — Glassmorphism<br><span>Frosted glass, gradient bg</span></a>
+      <a href="08-monochrome-green.html">8 — Monochrome + Green<br><span>Gray base, green accent</span></a>
+      <a href="09-forest-nature.html">9 — Forest / Nature<br><span>Greens, organic feel</span></a>
+      <a href="10-neon-tech.html">10 — Neon / Tech<br><span>Dark, cyan accent, techy</span></a>
+    </div>
+  </div>
+</body>
+</html>

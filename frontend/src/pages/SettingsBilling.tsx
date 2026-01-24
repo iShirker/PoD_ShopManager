@@ -523,7 +523,7 @@ export default function SettingsBilling() {
                   {' '}Expires: {formatDate(subscription?.current_period_end)}.
                 </>
               ) : (
-                <>No active subscription. Using default (Starter) limits. Select a plan above to subscribe.</>
+                <>No active subscription. Select a plan above to subscribe.</>
               )}
             </div>
             <div className="flex flex-col items-stretch sm:items-end gap-2">

@@ -4,6 +4,36 @@
 
 This document outlines the product evaluation, feature prioritization, and comprehensive development plan for a Print-on-Demand (PoD) management platform that integrates Etsy, Shopify, and PoD suppliers (Gelato, Printify, Printful).
 
+**Related documents:**
+- **[SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md)** – Three tiers (Starter $19.99, Growth $49.99, Scale $99.99), free trial, limits, overages.
+- **[COMPETITOR_ANALYSIS.md](./COMPETITOR_ANALYSIS.md)** – Competitors by feature, pricing, financials, differentiation.
+- **[FEATURE_PRIORITY.md](./FEATURE_PRIORITY.md)** – Feature–plan mapping and MVP scope.
+
+---
+
+## Clarifications Applied (2025-01-23)
+
+### Target Users
+- **Primary**: New PoD sellers (onboard first), then growing/established.
+- **Audience**: Solo sellers only (no teams initially).
+- **Revenue range**: $0 (fresh start) to $10,000+/month.
+- **Plans**: Three subscription tiers + limited-time free trial; see [SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md).
+
+### Pricing Model
+- **Subscription**: Yes. **$19.99 – $99.99/month** (Starter / Growth / Scale).
+- **Per-transaction fees**: Only when the app incurs extra cost (e.g. AI usage, storage overage, mockup overage). Otherwise subscription-only.
+
+### Technical Constraints
+- **Mockup generation**: Build **our own** mockup/preview system. Design our API to mirror competitor structures (e.g. Customily, Dynamic Mockups) so we can swap or add third-party integrations later. No external mockup API dependency for initial launch.
+- **Hosting**: **Railway** for now. See **Part 7.5** for three alternatives (Render, Fly.io, AWS) and comparison.
+- **Team**: 1 person + AI initially; may grow by 1–2 later.
+
+### Success Metrics
+- **Month 1 (public launch)**: 100 users → **$2,000/month** subscription revenue.
+- **Year 1**: 1,000 users → **$20,000/month** subscription revenue.
+- **Revenue targets**: Year 1 **$100,000** | Year 2 **$500,000** | Year 3 **$1,000,000**.
+- **Differentiation**: See [COMPETITOR_ANALYSIS.md](./COMPETITOR_ANALYSIS.md) for competitor comparison and PoD Shop Manager positioning.
+
 ---
 
 ## Part 1: Feature Evaluation & Prioritization
@@ -41,7 +71,7 @@ This document outlines the product evaluation, feature prioritization, and compr
 **Business Value**: Very High
 
 **Recommendations:**
-- Integrate with mockup generation APIs (Placeit, Smartmockups, or custom solution)
+- **Own mockup implementation**: No third-party mockup API at launch. Use in-house image processing (e.g. Pillow, canvas compositing). Design our API to match competitor patterns (templates, placements, text/image layers) for future integrations.
 - Support text, images, clipart, maps customization
 - Generate production-ready files automatically
 - Store customer customization data for order fulfillment
@@ -629,6 +659,56 @@ CREATE TABLE product_performance (
 );
 ```
 
+#### 4.7 Subscriptions & Usage (see [SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md))
+
+```sql
+-- Subscription plan definitions
+CREATE TABLE subscription_plans (
+    id SERIAL PRIMARY KEY,
+    slug VARCHAR(50) UNIQUE NOT NULL, -- 'free_trial', 'starter', 'growth', 'scale'
+    name VARCHAR(100) NOT NULL,
+    price_monthly DECIMAL(10,2) NOT NULL,
+    price_yearly DECIMAL(10,2),
+    limits JSONB NOT NULL, -- stores, products, listings, orders/month, storage_mb, mockups/month, etc.
+    features JSONB, -- feature flags
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- User subscription (current plan, period, trial)
+CREATE TABLE user_subscriptions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER UNIQUE REFERENCES users(id),
+    plan_id INTEGER REFERENCES subscription_plans(id),
+    status VARCHAR(50) NOT NULL, -- 'trialing', 'active', 'past_due', 'canceled'
+    trial_ends_at TIMESTAMP,
+    current_period_start TIMESTAMP NOT NULL,
+    current_period_end TIMESTAMP NOT NULL,
+    canceled_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Usage tracking (for limits and overages)
+CREATE TABLE usage_records (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    period_start DATE NOT NULL,
+    period_end DATE NOT NULL,
+    stores_connected INTEGER DEFAULT 0,
+    products_count INTEGER DEFAULT 0,
+    listings_count INTEGER DEFAULT 0,
+    orders_processed INTEGER DEFAULT 0,
+    mockups_generated INTEGER DEFAULT 0,
+    storage_bytes BIGINT DEFAULT 0,
+    seo_suggestions_used INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(user_id, period_start)
+);
+```
+
 ---
 
 ## Part 5: API Integration Plan
@@ -681,15 +761,17 @@ CREATE TABLE product_performance (
 - Order creation
 - Mockup generation API
 
-### 5.4 Mockup Generation API
+### 5.4 Mockup Generation (Own Implementation)
 
-**Options:**
-1. **Placeit API** - Commercial, $15-50/month
-2. **Smartmockups API** - Commercial
-3. **Custom Solution** - Use image processing libraries (Pillow, OpenCV)
-4. **Printful Mockup Generator API** - Free for Printful products
+**Approach**: Build our own mockup/preview engine. **No third-party mockup APIs at launch.** Use image processing (Pillow, canvas compositing, optional OpenCV) and template-based rendering.
 
-**Recommendation**: Start with Printful's API for Printful products, integrate Placeit for others.
+**API design (align with competitors for future integration):**
+- **Templates**: Product × placement (e.g. front, back, sleeve). Store template metadata (dimensions, bleed, safe zones).
+- **Layers**: Text, image, clipart. Each layer has position, size, rotation, font/color where applicable.
+- **Endpoints**: `POST /mockups/preview` (quick preview), `POST /mockups/production` (print-ready). Request: `template_id`, `layers[]`, `options`. Response: `image_url`, `thumbnail_url`, `format`.
+- **Rate limiting / usage**: Count previews per user per month; enforce subscription limits (see [SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md)). Overage may incur per-preview fee.
+
+**Reference structures**: Customily (layers, placements), Dynamic Mockups (templates, credits). Keep our schema compatible so we can optionally plug in Placeit, Smartmockups, or Printful mockup APIs later.
 
 ---
 
@@ -799,58 +881,63 @@ CREATE TABLE product_performance (
 - **Charts**: Recharts or Chart.js
 
 ### Infrastructure
-- **Hosting**: Railway (current) or AWS
+- **Hosting**: Railway (current). See **Part 7.5** for alternatives.
 - **CDN**: Cloudflare (for images/mockups)
 - **Monitoring**: Sentry (error tracking)
 - **Analytics**: Mixpanel or PostHog
 
+### Part 7.5: Hosting Comparison (Railway vs Alternatives)
+
+**Current**: Railway. **Alternatives considered**: Render, Fly.io, AWS (e.g. ECS + RDS).
+
+| Criteria | Railway | Render | Fly.io | AWS (ECS + RDS) |
+|----------|---------|--------|--------|------------------|
+| **DX / Ease of use** | Excellent; simple deploys, DB attach | Good; straightforward UI | Steeper; CLI, config | Complex; many services |
+| **Pricing (mid-scale)** | ~\$5 hobby → ~\$47 mid-scale; usage-based | ~\$7–\$25; transparent, predictable | ~\$15–\$156; confusing model | Variable; often \$50–\$200+ |
+| **Database** | Native Postgres, one-click | Native Postgres, managed | DIY or managed | RDS, full control |
+| **Bandwidth** | Usage-based; can spike | Transparent; fewer surprises | Usage-based | Per GB; can add up |
+| **Scaling** | Auto-scale; good for MVP | Good for apps + workers | Global edge; good for low latency | Highly flexible |
+| **Cold starts** | Minimal (long-running) | Minimal | Minimal | None (always-on) |
+| **Best for** | Full-stack MVP, small team | Reliable web apps, predictable cost | Global, real-time, edge | Enterprise, compliance |
+
+**Why consider alternatives:**
+- **Render**: More predictable pricing and bandwidth; strong uptime; good fit if we want to avoid usage spikes.
+- **Fly.io**: Better for global latency, WebSockets, real-time features; more control.
+- **AWS**: Best for compliance, scale, and eventual enterprise; higher ops burden.
+
+**Recommendation**: Stay on **Railway** for now (team of 1 + AI, MVP phase). Revisit **Render** when we need predictable monthly cost, or **Fly.io** when we add real-time/mockup workloads and care about global latency.
+
 ---
 
-## Part 8: Questions & Clarifications Needed
+## Part 8: Resolved Questions (See Clarifications Above)
 
-1. **Mockup Generation**: 
-   - Budget for mockup API services? (Placeit costs $15-50/month)
-   - Prefer custom solution or third-party API?
-
-2. **SKU Format**:
-   - Preferred SKU format? (e.g., `{BRAND}-{MODEL}-{SIZE}-{COLOR}-{DESIGN}`)
-   - Should SKUs be auto-generated or user-defined?
-
-3. **Discount Programs**:
-   - Maximum number of active discounts per product? (Recommend: 1)
-   - Should discounts apply automatically or require customer code?
-
-4. **Customization**:
-   - Which customization types are priority? (Text, Images, Clipart, Maps)
-   - Real-time preview required or post-purchase customization acceptable?
-
-5. **Pricing Model**:
-   - Will this be a SaaS product? What pricing tiers?
-   - Free tier limitations?
-
-6. **Multi-Store**:
-   - Maximum number of stores per user?
-   - Should stores be separate accounts or unified?
+Target users, pricing, mockup approach, hosting, team size, and success metrics are defined in **Clarifications Applied** at the top. Subscription details → [SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md). Competitor context → [COMPETITOR_ANALYSIS.md](./COMPETITOR_ANALYSIS.md).
 
 ---
 
 ## Part 9: Success Metrics
 
+### Business Targets (Clarified)
+- **Month 1 (public launch)**: 100 users, **\$2,000/month** subscription revenue.
+- **Year 1**: 1,000 users, **\$20,000/month** subscription revenue.
+- **Revenue**: Y1 **\$100,000** | Y2 **\$500,000** | Y3 **\$1,000,000**.
+
 ### User Engagement
 - Daily Active Users (DAU)
-- Products managed per user
-- Listings created per user
-- Orders processed per user
+- Products managed per user (by plan)
+- Listings created per user (by plan)
+- Orders processed per user (by plan)
 
 ### Business Metrics
-- Revenue per user
-- Churn rate
+- Revenue per user (ARPU)
+- Churn rate (target &lt; 5% monthly)
 - Customer Lifetime Value (CLV)
 - Net Promoter Score (NPS)
+- Plan mix (Starter / Growth / Scale)
 
 ### Technical Metrics
-- API response time
-- Uptime (target: 99.9%)
+- API response time (p95 &lt; 500 ms)
+- Uptime (target 99.9%)
 - Error rate
 - Order fulfillment accuracy
 
@@ -858,13 +945,14 @@ CREATE TABLE product_performance (
 
 ## Next Steps
 
-1. **Review this plan** and provide feedback
-2. **Answer clarification questions** (Part 8)
-3. **Prioritize features** if timeline needs adjustment
-4. **Begin Phase 1 development** with Sprint 1-2
+1. **Review** this plan and [SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md), [COMPETITOR_ANALYSIS.md](./COMPETITOR_ANALYSIS.md), [FEATURE_PRIORITY.md](./FEATURE_PRIORITY.md).
+2. **Confirm** priorities and timeline; adjust roadmaps if needed.
+3. **Do not start development yet**; implementation begins only after explicit go-ahead.
+4. When approved: **Begin Phase 1** (Sprint 1–2) per roadmap.
 
 ---
 
-**Document Version**: 1.0  
+**Document Version**: 1.1  
 **Last Updated**: 2025-01-23  
-**Author**: AI Product Manager
+**Author**: AI Product Manager  
+**Changelog**: v1.1 – Clarifications (target users, pricing, tech constraints, success metrics), subscription + usage schema, hosting comparison, mockup own-API, competitor doc refs.

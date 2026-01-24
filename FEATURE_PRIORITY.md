@@ -1,5 +1,26 @@
 # Feature Priority & Quick Reference
 
+**Related docs:** [PRODUCT_PLAN.md](./PRODUCT_PLAN.md) · [SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md) · [COMPETITOR_ANALYSIS.md](./COMPETITOR_ANALYSIS.md)
+
+---
+
+## Subscription Integration
+
+Features and limits are enforced by plan. See [SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md) for full details.
+
+| Plan | Price | Stores | Products | Listings | Orders/mo | Mockups/mo | Best for |
+|------|-------|--------|----------|----------|-----------|------------|----------|
+| **Free Trial** | $0 (14 days) | 1 | 50 | 20 | 100 total | 20 | Try full product |
+| **Starter** | $19.99/mo | 1 | 200 | 100 | 500 | 100 | New sellers, $0–$2k/mo |
+| **Growth** | $49.99/mo | 3 | 1,000 | 500 | 2,000 | 500 | Growing, $2k–$5k/mo |
+| **Scale** | $99.99/mo | 10 | 5,000 | 2,500 | 10,000 | 2,000 | Established, $5k+/mo |
+
+- **P0 (MVP)** features available on **Free Trial** and all paid plans (within limits).
+- **P1** features (bulk, SEO, discounts, mockups) unlocked in **Growth** and **Scale**; mockup/SEO limits vary by plan.
+- **P2** (Design Library, Advanced Analytics, Tax) in **Growth** / **Scale**; API, priority support in **Scale** only.
+
+---
+
 ## 🎯 Top Priority Features (MVP - Months 1-3)
 
 ### 1. Multi-Product Listing with SKU Tracking ⭐⭐⭐⭐⭐
@@ -91,7 +112,7 @@
 
 **Key Components**:
 - Customization engine (text, images, clipart)
-- Mockup generation API integration
+- **Own mockup implementation** (no third-party API at launch; API design aligned with competitors for future integration)
 - Real-time preview for customers
 - Production file generation
 
@@ -198,34 +219,21 @@
 7. ✅ Multi-store dashboard
 
 **Timeline**: 3 months  
-**Team Size**: 2-3 developers  
-**Budget Estimate**: $50k-100k (if hiring)
+**Team Size**: 1 person + AI (expandable by 1–2 later)  
+**Budget**: No hire assumed; see [PRODUCT_PLAN.md](./PRODUCT_PLAN.md) for stack and hosting.
 
 ---
 
-## 📝 Questions to Answer
+## 📝 Clarifications Applied
 
-Before starting development, clarify:
+Target users, pricing, technical constraints, and success metrics are **defined**. See **Clarifications Applied** in [PRODUCT_PLAN.md](./PRODUCT_PLAN.md). Summary:
 
-1. **Target Users**: 
-   - New PoD sellers or experienced?
-   - Solo sellers or teams?
-   - What's their current monthly revenue?
-
-2. **Pricing Model**:
-   - Subscription? (Recommended: $29-99/month)
-   - Per-transaction fee?
-   - Free tier limitations?
-
-3. **Technical Constraints**:
-   - Budget for third-party APIs? (Mockup APIs cost $15-50/month)
-   - Preferred hosting? (Current: Railway)
-   - Team size?
-
-4. **Success Metrics**:
-   - Target users in first year?
-   - Target revenue?
-   - Key differentiator vs competitors?
+- **Target**: New → growing solo PoD sellers; revenue $0–$10k+/month.
+- **Pricing**: Subscription $19.99–$99.99/mo; per-transaction only for heavy resource use (AI, storage, mockup overage).
+- **Mockups**: Own implementation; API shaped like competitors for future integrations.
+- **Hosting**: Railway now; [PRODUCT_PLAN.md](./PRODUCT_PLAN.md) Part 7.5 compares Render, Fly.io, AWS.
+- **Success**: Month 1 → 100 users, $2k/mo; Year 1 → 1,000 users, $20k/mo; Y1 $100k, Y2 $500k, Y3 $1M revenue.
+- **Competitors**: [COMPETITOR_ANALYSIS.md](./COMPETITOR_ANALYSIS.md).
 
 ---
 
@@ -251,4 +259,4 @@ Before starting development, clarify:
 
 ---
 
-**Next Action**: Review PRODUCT_PLAN.md for detailed architecture and database schema.
+**Next Action**: Review [PRODUCT_PLAN.md](./PRODUCT_PLAN.md), [SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md), and [COMPETITOR_ANALYSIS.md](./COMPETITOR_ANALYSIS.md). **Do not start development** until explicitly approved.

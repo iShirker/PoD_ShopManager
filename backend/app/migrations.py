@@ -384,7 +384,7 @@ def _migrate_subscription_auto_renew(db):
         return
     with db.engine.connect() as conn:
         try:
-            conn.execute(text('ALTER TABLE user_subscriptions ADD COLUMN auto_renew BOOLEAN NOT NULL DEFAULT 1'))
+            conn.execute(text('ALTER TABLE user_subscriptions ADD COLUMN auto_renew BOOLEAN NOT NULL DEFAULT TRUE'))
             conn.commit()
             print("Added user_subscriptions.auto_renew")
         except Exception as e:

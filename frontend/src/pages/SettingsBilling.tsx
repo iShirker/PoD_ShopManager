@@ -275,17 +275,19 @@ export default function SettingsBilling() {
                     {sortedPlans.map((p) => {
                       const isCurrent = effectiveCurrentPlanId === p.id
                       const trialUsed = p.slug === 'free_trial' && freeTrialUsed
+                      const inaccessible = trialUsed
                       return (
                         <th
                           key={p.id}
                           className={cn(
                             'text-center py-4 px-3 font-bold',
-                            isCurrent && 'ring-2 ring-inset'
+                            isCurrent && 'ring-2 ring-inset',
+                            inaccessible && 'opacity-50 pointer-events-none select-none'
                           )}
                           style={{
                             color: 'var(--t-main-text)',
                             fontSize: '1rem',
-                            backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : undefined,
+                            backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : inaccessible ? 'rgba(0,0,0,0.05)' : undefined,
                             ['--tw-ring-color' as string]: isCurrent ? 'var(--t-accent)' : undefined,
                           }}
                         >
@@ -369,12 +371,16 @@ export default function SettingsBilling() {
                       const isCurrent = effectiveCurrentPlanId === p.id
                       const canSelect = selectablePlanIds.includes(p.id)
                       const isSelected = selectedPlanId === p.id
+                      const inaccessible = p.slug === 'free_trial' && freeTrialUsed
                       return (
                         <td
                           key={p.id}
-                          className="py-3 px-3 text-center"
+                          className={cn(
+                            'py-3 px-3 text-center',
+                            inaccessible && 'opacity-50 pointer-events-none select-none'
+                          )}
                           style={{
-                            backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : undefined,
+                            backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : inaccessible ? 'rgba(0,0,0,0.05)' : undefined,
                           }}
                         >
                           {canSelect ? (
@@ -404,11 +410,16 @@ export default function SettingsBilling() {
                     {sortedPlans.map((p) => {
                       const { text, sub } = displayPrice(p)
                       const isCurrent = effectiveCurrentPlanId === p.id
+                      const inaccessible = p.slug === 'free_trial' && freeTrialUsed
                       return (
                         <td
                           key={p.id}
-                          className={cn('py-3 px-3 text-center', isCurrent && 'font-bold')}
-                          style={{ backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : undefined }}
+                          className={cn(
+                            'py-3 px-3 text-center',
+                            isCurrent && 'font-bold',
+                            inaccessible && 'opacity-50 pointer-events-none select-none'
+                          )}
+                          style={{ backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : inaccessible ? 'rgba(0,0,0,0.05)' : undefined }}
                         >
                           <span className="font-bold" style={{ color: 'var(--t-accent)' }}>{text}</span>
                           {sub && <span className="text-muted text-xs ml-0.5">{sub}</span>}
@@ -427,12 +438,17 @@ export default function SettingsBilling() {
                         {sortedPlans.map((p) => {
                           const limitVal = p.limits?.[key] as number | undefined
                           const isCurrent = effectiveCurrentPlanId === p.id
+                          const inaccessible = p.slug === 'free_trial' && freeTrialUsed
                           return (
                             <td
                               key={p.id}
-                              className={cn('py-3 px-3 text-center', isCurrent && 'font-bold')}
+                              className={cn(
+                                'py-3 px-3 text-center',
+                                isCurrent && 'font-bold',
+                                inaccessible && 'opacity-50 pointer-events-none select-none'
+                              )}
                               style={{
-                                backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : undefined,
+                                backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : inaccessible ? 'rgba(0,0,0,0.05)' : undefined,
                                 color: 'var(--t-main-text)',
                               }}
                             >
@@ -460,12 +476,17 @@ export default function SettingsBilling() {
                         </td>
                         {sortedPlans.map((p) => {
                           const isCurrent = effectiveCurrentPlanId === p.id
+                          const inaccessible = p.slug === 'free_trial' && freeTrialUsed
                           return (
                             <td
                               key={p.id}
-                              className={cn('py-3 px-3 text-center', isCurrent && 'font-bold')}
+                              className={cn(
+                                'py-3 px-3 text-center',
+                                isCurrent && 'font-bold',
+                                inaccessible && 'opacity-50 pointer-events-none select-none'
+                              )}
                               style={{
-                                backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : undefined,
+                                backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : inaccessible ? 'rgba(0,0,0,0.05)' : undefined,
                                 color: 'var(--t-main-text)',
                               }}
                             >
@@ -503,25 +524,32 @@ export default function SettingsBilling() {
             </div>
             <div className="flex flex-col items-stretch sm:items-end gap-2">
               {selectedIsTrial ? (
-                <div className="flex flex-wrap gap-2 justify-end">
-                  <button
-                    type="button"
-                    onClick={() => startTrialMutation.mutate()}
-                    disabled={startTrialMutation.isPending}
-                    className="btn-primary"
-                  >
-                    {startTrialMutation.isPending ? 'Starting…' : 'Start free trial'}
-                  </button>
-                  {subscription != null && subscription?.auto_renew !== false && (
+                <>
+                  <div className="flex flex-wrap items-baseline gap-4 body-text">
+                    <span className="text-xl font-bold" style={{ color: 'var(--t-main-text)' }}>
+                      Total: {currency} 0.00
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 justify-end">
                     <button
                       type="button"
-                      onClick={() => setCancelConfirmOpen(true)}
-                      className="btn-secondary"
+                      onClick={() => startTrialMutation.mutate()}
+                      disabled={startTrialMutation.isPending}
+                      className="btn-primary"
                     >
-                      Cancel
+                      {startTrialMutation.isPending ? 'Starting…' : 'Start free trial'}
                     </button>
-                  )}
-                </div>
+                    {subscription != null && subscription?.auto_renew !== false && (
+                      <button
+                        type="button"
+                        onClick={() => setCancelConfirmOpen(true)}
+                        className="btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </>
               ) : selectedIsPaid ? (
                 <>
                   <div className="flex flex-wrap items-baseline gap-4 body-text">

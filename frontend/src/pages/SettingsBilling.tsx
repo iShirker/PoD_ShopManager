@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { settingsApi } from '../lib/api'
 import { cn } from '../lib/utils'
 import { Loader2, Check, X } from 'lucide-react'
+import PaymentModal from '../components/PaymentModal'
 
 type Plan = {
   id: number
@@ -13,6 +14,15 @@ type Plan = {
   limits?: Record<string, number>
   features?: Record<string, boolean | string>
   is_active?: boolean
+}
+
+type Subscription = {
+  id?: number
+  plan_id?: number
+  billing_interval?: string
+  current_period_start?: string
+  current_period_end?: string
+  plan?: Plan
 }
 
 const LIMIT_LABELS: Record<string, string> = {
@@ -68,25 +78,87 @@ const FEATURE_META: Record<
   },
 }
 
+function formatDate(s: string | undefined) {
+  if (!s) return '—'
+  try {
+    const d = new Date(s)
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  } catch {
+    return '—'
+  }
+}
+
 export default function SettingsBilling() {
   const [interval, setInterval] = useState<'monthly' | 'yearly'>('monthly')
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null)
+  const [paymentOpen, setPaymentOpen] = useState(false)
+
   const { data, isLoading } = useQuery({
     queryKey: ['settings-billing'],
     queryFn: () => settingsApi.billing(),
   })
 
+  const subscription = data?.data?.subscription as Subscription | null | undefined
   const plan = data?.data?.plan as Plan | undefined
   const usage = (data?.data?.usage ?? {}) as Record<string, number>
   const plans = (data?.data?.plans ?? []) as Plan[]
 
-  const isYearly = interval === 'yearly'
-  const currentPlanId = plan?.id
+  const currentPlanId = plan?.id ?? null
+  const currentInterval = (subscription?.billing_interval ?? 'monthly').toLowerCase() as 'monthly' | 'yearly'
+  const isYearlyForced = currentInterval === 'yearly'
+  const isYearly = isYearlyForced || interval === 'yearly'
 
-  const sortedPlans = [...plans].sort((a, b) => {
-    if (a.slug === 'free_trial') return -1
-    if (b.slug === 'free_trial') return 1
-    return (a.price_monthly ?? 0) - (b.price_monthly ?? 0)
+  const sortedPlans = useMemo(
+    () =>
+      [...plans].sort((a, b) => {
+        if (a.slug === 'free_trial') return -1
+        if (b.slug === 'free_trial') return 1
+        return (a.price_monthly ?? 0) - (b.price_monthly ?? 0)
+      }),
+    [plans]
+  )
+
+  const currentIdx = sortedPlans.findIndex((p) => p.id === currentPlanId)
+  const selectablePlanIds = useMemo(() => {
+    const ids: number[] = []
+    for (let i = 0; i < sortedPlans.length; i++) {
+      const p = sortedPlans[i]
+      if (p.price_monthly === 0) continue
+      if (currentIdx < 0) {
+        ids.push(p.id)
+        continue
+      }
+      if (i <= currentIdx) continue
+      if (isYearlyForced) {
+        const curMo = sortedPlans[currentIdx]?.price_monthly ?? 0
+        const selMo = p.price_monthly ?? 0
+        if (selMo <= curMo) continue
+      }
+      ids.push(p.id)
+    }
+    return ids
+  }, [sortedPlans, currentIdx, isYearlyForced])
+
+  useEffect(() => {
+    if (selectedPlanId != null) return
+    const firstSelectable = selectablePlanIds[0]
+    if (firstSelectable != null) setSelectedPlanId(firstSelectable)
+    else if (currentPlanId != null) setSelectedPlanId(currentPlanId)
+  }, [currentPlanId, selectedPlanId, selectablePlanIds])
+
+  const { data: quoteData } = useQuery({
+    queryKey: ['billing-quote', selectedPlanId, isYearly],
+    queryFn: () => settingsApi.billingQuote({ plan_id: selectedPlanId!, interval: isYearly ? 'yearly' : 'monthly' }),
+    enabled: !!selectedPlanId && selectablePlanIds.includes(selectedPlanId),
   })
+
+  const quote = quoteData?.data
+  const total = typeof quote?.total === 'number' ? quote.total : 0
+  const allowed = !!quote?.allowed
+  const proratedCredit = typeof quote?.prorated_credit === 'number' ? quote.prorated_credit : 0
+  const currency = quote?.currency ?? 'USD'
+
+  const selectedPlan = sortedPlans.find((p) => p.id === selectedPlanId)
 
   const allLimitKeys = Array.from(
     new Set(plans.flatMap((p) => (p.limits ? Object.keys(p.limits) : [])))
@@ -99,7 +171,7 @@ export default function SettingsBilling() {
     const mo = Number(p.price_monthly ?? 0)
     if (mo === 0) return { text: 'Free', sub: null }
     if (isYearly) {
-      const yr = (mo * 11) + 0.1
+      const yr = mo * 11 + 0.1
       return { text: `$${yr.toFixed(2)}`, sub: '/yr (11 months)' }
     }
     return { text: `$${mo.toFixed(2)}`, sub: '/mo' }
@@ -119,6 +191,11 @@ export default function SettingsBilling() {
       v = Math.round(Number(usage.storage_bytes) / 1024 / 1024)
     }
     return v
+  }
+
+  const handleToggleInterval = () => {
+    if (isYearlyForced) return
+    setInterval((i) => (i === 'monthly' ? 'yearly' : 'monthly'))
   }
 
   return (
@@ -141,7 +218,7 @@ export default function SettingsBilling() {
               Current plan
             </h2>
             {plan ? (
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="flex flex-wrap items-start gap-6">
                 <div>
                   <p className="text-xl font-bold body-text" style={{ color: 'var(--t-accent)' }}>{plan.name}</p>
                   <p className="text-muted body-text mt-0.5">
@@ -150,6 +227,22 @@ export default function SettingsBilling() {
                       : `$${Number(plan.price_monthly ?? 0).toFixed(2)}/month`}
                   </p>
                 </div>
+                {subscription?.current_period_start != null && subscription?.current_period_end != null && (
+                  <div className="flex flex-wrap gap-6 body-text">
+                    <div>
+                      <p className="text-sm text-muted">Started</p>
+                      <p className="font-medium" style={{ color: 'var(--t-main-text)' }}>
+                        {formatDate(subscription.current_period_start)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted">Expires</p>
+                      <p className="font-medium" style={{ color: 'var(--t-main-text)' }}>
+                        {formatDate(subscription.current_period_end)}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <p className="text-muted">No active subscription. Using default (Starter) limits.</p>
@@ -162,14 +255,24 @@ export default function SettingsBilling() {
                 Compare plans
               </h2>
               <div className="flex items-center gap-3 w-full justify-center">
-                <span className={cn('text-base font-medium', !isYearly && 'opacity-100')} style={isYearly ? { color: 'var(--t-muted)' } : { color: 'var(--t-accent)' }}>Monthly</span>
+                <span
+                  className={cn(
+                    'text-base font-medium',
+                    isYearlyForced && 'opacity-50 cursor-not-allowed'
+                  )}
+                  style={!isYearly ? { color: 'var(--t-accent)' } : { color: 'var(--t-muted)' }}
+                >
+                  Monthly
+                </span>
                 <button
                   type="button"
                   role="switch"
                   aria-checked={isYearly}
-                  onClick={() => setInterval((i) => (i === 'monthly' ? 'yearly' : 'monthly'))}
+                  disabled={isYearlyForced}
+                  onClick={handleToggleInterval}
                   className={cn(
-                    'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
+                    'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors',
+                    isYearlyForced ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
                     'focus:outline-none focus:ring-2 focus:ring-offset-2'
                   )}
                   style={{ background: isYearly ? 'var(--t-accent)' : 'var(--t-card-border)', ['--tw-ring-color' as string]: 'var(--t-accent)' }}
@@ -181,13 +284,19 @@ export default function SettingsBilling() {
                     )}
                   />
                 </button>
-                <span className={cn('text-base font-medium', isYearly && 'opacity-100')} style={!isYearly ? { color: 'var(--t-muted)' } : { color: 'var(--t-accent)' }}>
+                <span
+                  className={cn('text-base font-medium', isYearlyForced && 'opacity-100')}
+                  style={isYearly ? { color: 'var(--t-accent)' } : { color: 'var(--t-muted)' }}
+                >
                   Yearly
                   <span className="ml-1.5 rounded bg-green-100 px-1.5 py-0.5 text-xs font-semibold text-green-800">
                     One month free!
                   </span>
                 </span>
               </div>
+              {isYearlyForced && (
+                <p className="text-sm text-muted">Your plan is yearly. Upgrades must be yearly.</p>
+              )}
             </div>
 
             <div className="w-max max-w-full mx-auto">
@@ -226,20 +335,52 @@ export default function SettingsBilling() {
                   </tr>
                 </thead>
                 <tbody>
+                  <tr className="border-b" style={{ borderColor: 'var(--t-card-border)' }}>
+                    <td className="py-3 pr-4 font-semibold" style={{ color: 'var(--t-muted)', fontSize: '1rem' }}>Select</td>
+                    {sortedPlans.map((p) => {
+                      const isCurrent = currentPlanId === p.id
+                      const canSelect = selectablePlanIds.includes(p.id)
+                      const isSelected = selectedPlanId === p.id
+                      return (
+                        <td
+                          key={p.id}
+                          className="py-3 px-3 text-center"
+                          style={{
+                            backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : undefined,
+                          }}
+                        >
+                          {canSelect ? (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPlanId(p.id)}
+                              className={cn(
+                                'inline-flex items-center justify-center w-6 h-6 rounded-full border-2 transition-colors',
+                                isSelected ? 'border-[var(--t-accent)] bg-[var(--t-sidebar-active-bg)]' : 'border-[var(--t-card-border)]'
+                              )}
+                              style={{ borderColor: isSelected ? 'var(--t-accent)' : 'var(--t-card-border)' }}
+                              aria-pressed={isSelected}
+                              aria-label={`Select ${p.name}`}
+                            >
+                              {isSelected && <span className="w-2 h-2 rounded-full" style={{ background: 'var(--t-accent)' }} />}
+                            </button>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </td>
+                      )
+                    })}
+                    <td className="py-3 px-3 text-center text-muted" style={{ background: 'rgba(59,130,246,0.08)' }}>—</td>
+                  </tr>
                   <tr className="border-b" style={{ borderColor: 'var(--t-card-border)', background: 'var(--t-sidebar-active-bg)' }}>
                     <td className="py-3 pr-4 font-semibold" style={{ color: 'var(--t-main-text)', fontSize: '1rem' }}>Price</td>
                     {sortedPlans.map((p) => {
                       const { text, sub } = displayPrice(p)
+                      const isCurrent = currentPlanId === p.id
                       return (
                         <td
                           key={p.id}
-                          className={cn(
-                            'py-3 px-3 text-center',
-                            currentPlanId === p.id && 'font-bold'
-                          )}
-                          style={{
-                            backgroundColor: currentPlanId === p.id ? 'var(--t-sidebar-active-bg)' : undefined,
-                          }}
+                          className={cn('py-3 px-3 text-center', isCurrent && 'font-bold')}
+                          style={{ backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : undefined }}
                         >
                           <span className="font-bold" style={{ color: 'var(--t-accent)' }}>{text}</span>
                           {sub && <span className="text-muted text-xs ml-0.5">{sub}</span>}
@@ -261,10 +402,7 @@ export default function SettingsBilling() {
                           return (
                             <td
                               key={p.id}
-                              className={cn(
-                                'py-3 px-3 text-center',
-                                isCurrent && 'font-bold'
-                              )}
+                              className={cn('py-3 px-3 text-center', isCurrent && 'font-bold')}
                               style={{
                                 backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : undefined,
                                 color: 'var(--t-main-text)',
@@ -297,10 +435,7 @@ export default function SettingsBilling() {
                           return (
                             <td
                               key={p.id}
-                              className={cn(
-                                'py-3 px-3 text-center',
-                                isCurrent && 'font-bold'
-                              )}
+                              className={cn('py-3 px-3 text-center', isCurrent && 'font-bold')}
                               style={{
                                 backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : undefined,
                                 color: 'var(--t-main-text)',
@@ -320,6 +455,36 @@ export default function SettingsBilling() {
               </table>
             </div>
           </div>
+
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-wrap items-baseline gap-4 body-text">
+              {proratedCredit > 0 && (
+                <span className="text-muted">
+                  Prorated credit: −{currency} {proratedCredit.toFixed(2)}
+                </span>
+              )}
+              <span className="text-xl font-bold" style={{ color: 'var(--t-main-text)' }}>
+                Total: {currency} {total.toFixed(2)}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPaymentOpen(true)}
+              disabled={!allowed || !selectedPlanId || total <= 0 || !selectablePlanIds.includes(selectedPlanId)}
+              className="btn-primary"
+            >
+              Pay {currency} {total.toFixed(2)}
+            </button>
+          </div>
+
+          <PaymentModal
+            open={paymentOpen}
+            onClose={() => setPaymentOpen(false)}
+            total={total}
+            currency={currency}
+            planName={selectedPlan?.name ?? ''}
+            interval={isYearly ? 'yearly' : 'monthly'}
+          />
         </>
       )}
     </div>

@@ -2,7 +2,7 @@
 Settings routes: billing, subscription, usage.
 """
 from datetime import datetime, date, timedelta
-from flask import jsonify
+from flask import jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.blueprints.settings import settings_bp
 from app.models import (
@@ -14,6 +14,10 @@ from app.models import (
     Product,
 )
 from app import db
+
+
+def _yearly_price(price_monthly: float) -> float:
+    return round((float(price_monthly) * 11) + 0.10, 2)
 
 
 @settings_bp.route('/billing', methods=['GET'])
@@ -67,4 +71,88 @@ def billing():
         'plan': plan.to_dict() if plan else None,
         'usage': usage.to_dict(),
         'plans': [p.to_dict() for p in plans],
+    })
+
+
+@settings_bp.route('/billing/quote', methods=['POST'])
+@jwt_required()
+def billing_quote():
+    """
+    Get checkout quote for a selected plan and interval.
+
+    Body: { "plan_id": int, "interval": "monthly" | "yearly" }
+    Returns: { "subtotal", "prorated_credit", "total", "currency", "allowed" }
+    """
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    plan_id = data.get('plan_id')
+    interval = (data.get('interval') or 'monthly').lower()
+    if interval not in ('monthly', 'yearly'):
+        return jsonify({'error': 'Invalid interval'}), 400
+    if not plan_id:
+        return jsonify({'error': 'plan_id required'}), 400
+
+    plan = SubscriptionPlan.query.get(plan_id)
+    if not plan or not plan.is_active:
+        return jsonify({'error': 'Plan not found'}), 404
+
+    sub = UserSubscription.query.filter_by(user_id=user_id).first()
+    current_plan = sub.plan if sub else None
+    current_interval = (sub.billing_interval or 'monthly').lower() if sub else None
+
+    def plan_sort_key(p):
+        if getattr(p, 'slug', None) == 'free_trial':
+            return -1
+        return float(p.price_monthly or 0)
+
+    plans_asc = sorted(
+        SubscriptionPlan.query.filter_by(is_active=True).all(),
+        key=plan_sort_key,
+    )
+    current_idx = next((i for i, p in enumerate(plans_asc) if p.id == (current_plan.id if current_plan else None)), -1)
+    selected_idx = next((i for i, p in enumerate(plans_asc) if p.id == plan_id), -1)
+    if selected_idx < 0:
+        return jsonify({'error': 'Plan not found'}), 404
+
+    allowed = True
+    if current_plan and selected_idx <= current_idx:
+        allowed = False
+    if current_interval == 'yearly' and interval != 'yearly':
+        allowed = False
+    if current_interval == 'yearly' and interval == 'yearly':
+        curr_yr = _yearly_price(current_plan.price_monthly or 0)
+        sel_yr = _yearly_price(plan.price_monthly or 0)
+        if sel_yr <= curr_yr:
+            allowed = False
+
+    price_monthly = float(plan.price_monthly or 0)
+    if price_monthly == 0:
+        subtotal = 0.0
+    elif interval == 'yearly':
+        subtotal = _yearly_price(price_monthly)
+    else:
+        subtotal = price_monthly
+
+    prorated_credit = 0.0
+    if allowed and sub and current_plan and selected_idx > current_idx and price_monthly > 0:
+        start = sub.current_period_start.date() if hasattr(sub.current_period_start, 'date') else sub.current_period_start
+        end = sub.current_period_end.date() if hasattr(sub.current_period_end, 'date') else sub.current_period_end
+        today = date.today()
+        if end > today:
+            total_days = (end - start).days or 1
+            days_left = (end - today).days
+            if current_interval == 'yearly':
+                paid = _yearly_price(current_plan.price_monthly or 0)
+            else:
+                paid = float(current_plan.price_monthly or 0)
+            prorated_credit = round(paid * (days_left / total_days), 2)
+
+    total = max(0.0, round(subtotal - prorated_credit, 2))
+
+    return jsonify({
+        'subtotal': round(subtotal, 2),
+        'prorated_credit': prorated_credit,
+        'total': total,
+        'currency': 'USD',
+        'allowed': allowed,
     })

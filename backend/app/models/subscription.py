@@ -43,6 +43,7 @@ class UserSubscription(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, unique=True, index=True)
     plan_id = db.Column(db.Integer, db.ForeignKey('subscription_plans.id'), nullable=False)
     status = db.Column(db.String(50), nullable=False)  # trialing, active, past_due, canceled
+    billing_interval = db.Column(db.String(20), nullable=True)  # monthly, yearly
     trial_ends_at = db.Column(db.DateTime, nullable=True)
     current_period_start = db.Column(db.DateTime, nullable=False)
     current_period_end = db.Column(db.DateTime, nullable=False)
@@ -59,6 +60,7 @@ class UserSubscription(db.Model):
             'plan_id': self.plan_id,
             'plan': self.plan.to_dict() if self.plan else None,
             'status': self.status,
+            'billing_interval': self.billing_interval or 'monthly',
             'trial_ends_at': self.trial_ends_at.isoformat() if self.trial_ends_at else None,
             'current_period_start': self.current_period_start.isoformat() if self.current_period_start else None,
             'current_period_end': self.current_period_end.isoformat() if self.current_period_end else None,

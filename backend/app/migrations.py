@@ -22,6 +22,7 @@ def run_startup_migrations(db, app):
             _migrate_subscription_and_new_tables(db, app)
             _migrate_user_preferred_theme(db)
             _migrate_plan_names_pro_master(db)
+            _migrate_subscription_billing_interval(db)
             app.logger.info("Startup migrations completed successfully")
         except Exception as e:
             app.logger.error(f"Startup migration error: {e}")
@@ -352,3 +353,20 @@ def _migrate_plan_names_pro_master(db):
             conn.commit()
         except Exception as e:
             print(f"Could not migrate plan names: {e}")
+
+
+def _migrate_subscription_billing_interval(db):
+    """Add billing_interval to user_subscriptions."""
+    inspector = inspect(db.engine)
+    if 'user_subscriptions' not in inspector.get_table_names():
+        return
+    existing = {c['name'] for c in inspector.get_columns('user_subscriptions')}
+    if 'billing_interval' in existing:
+        return
+    with db.engine.connect() as conn:
+        try:
+            conn.execute(text('ALTER TABLE user_subscriptions ADD COLUMN billing_interval VARCHAR(20)'))
+            conn.commit()
+            print("Added user_subscriptions.billing_interval")
+        except Exception as e:
+            print(f"Could not add billing_interval: {e}")

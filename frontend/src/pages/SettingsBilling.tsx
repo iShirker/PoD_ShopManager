@@ -135,7 +135,7 @@ export default function SettingsBilling() {
 
   const currentPlanId = plan?.id ?? null
   const currentInterval = (subscription?.billing_interval ?? 'monthly').toLowerCase() as 'monthly' | 'yearly'
-  const isYearlyForced = currentInterval === 'yearly'
+  const isYearlyForced = subscription != null && currentInterval === 'yearly'
   const isYearly = isYearlyForced || interval === 'yearly'
 
   const sortedPlans = useMemo(
@@ -149,32 +149,33 @@ export default function SettingsBilling() {
   )
 
   const currentIdx = sortedPlans.findIndex((p) => p.id === currentPlanId)
+  const effectiveCurrentIdx = subscription != null ? currentIdx : -1
   const selectablePlanIds = useMemo(() => {
     const ids: number[] = []
     for (let i = 0; i < sortedPlans.length; i++) {
       const p = sortedPlans[i]
       const isTrial = p.slug === 'free_trial'
       if (isTrial) {
-        if (currentIdx >= 0) continue
+        if (effectiveCurrentIdx >= 0) continue
         if (freeTrialUsed) continue
         ids.push(p.id)
         continue
       }
       if ((p.price_monthly ?? 0) === 0) continue
-      if (currentIdx < 0) {
+      if (effectiveCurrentIdx < 0) {
         ids.push(p.id)
         continue
       }
-      if (i <= currentIdx) continue
+      if (i <= effectiveCurrentIdx) continue
       if (isYearlyForced) {
-        const curMo = sortedPlans[currentIdx]?.price_monthly ?? 0
+        const curMo = sortedPlans[effectiveCurrentIdx]?.price_monthly ?? 0
         const selMo = p.price_monthly ?? 0
         if (selMo <= curMo) continue
       }
       ids.push(p.id)
     }
     return ids
-  }, [sortedPlans, currentIdx, isYearlyForced, freeTrialUsed])
+  }, [sortedPlans, effectiveCurrentIdx, isYearlyForced, freeTrialUsed])
 
   const selectedPlan = sortedPlans.find((p) => p.id === selectedPlanId)
   const effectiveCurrentPlanId = subscription != null ? currentPlanId : null
@@ -255,58 +256,12 @@ export default function SettingsBilling() {
         </div>
       ) : (
         <>
-          <div className="card card-body overflow-x-auto">
-            <div className="flex flex-col items-center gap-4 mb-6">
-              <h2 className="section-title w-full text-center md:text-left" style={{ color: 'var(--t-main-text)' }}>
-                Compare plans
-              </h2>
-              <div className="flex items-center gap-3 w-full justify-center">
-                <span
-                  className={cn(
-                    'text-base font-medium',
-                    isYearlyForced && 'opacity-50 cursor-not-allowed'
-                  )}
-                  style={!isYearly ? { color: 'var(--t-accent)' } : { color: 'var(--t-muted)' }}
-                >
-                  Monthly
-                </span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={isYearly}
-                  disabled={isYearlyForced}
-                  onClick={handleToggleInterval}
-                  className={cn(
-                    'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors',
-                    isYearlyForced ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
-                    'focus:outline-none focus:ring-2 focus:ring-offset-2'
-                  )}
-                  style={{ background: isYearly ? 'var(--t-accent)' : 'var(--t-card-border)', ['--tw-ring-color' as string]: 'var(--t-accent)' }}
-                >
-                  <span
-                    className={cn(
-                      'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition',
-                      isYearly ? 'translate-x-5' : 'translate-x-1'
-                    )}
-                  />
-                </button>
-                <span
-                  className={cn('text-base font-medium', isYearlyForced && 'opacity-100')}
-                  style={isYearly ? { color: 'var(--t-accent)' } : { color: 'var(--t-muted)' }}
-                >
-                  Yearly
-                  <span className="ml-1.5 rounded bg-green-100 px-1.5 py-0.5 text-xs font-semibold text-green-800">
-                    One month free!
-                  </span>
-                </span>
-              </div>
-              {isYearlyForced && (
-                <p className="text-sm text-muted">Your plan is yearly. Upgrades must be yearly.</p>
-              )}
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="body-text w-full" style={{ tableLayout: 'fixed', width: '42rem', minWidth: '42rem' }}>
+          <div className="card card-body max-w-4xl mx-auto">
+            <h2 className="section-title text-center mb-4" style={{ color: 'var(--t-main-text)' }}>
+              Compare plans
+            </h2>
+            <div className="flex justify-center overflow-x-auto">
+              <table className="body-text" style={{ tableLayout: 'fixed', width: '42rem', minWidth: '42rem' }}>
                 <colgroup>
                   <col style={{ width: '13rem' }} />
                   {sortedPlans.map((_, i) => (
@@ -355,6 +310,59 @@ export default function SettingsBilling() {
                   </tr>
                 </thead>
                 <tbody>
+                  <tr className="border-b-2" style={{ borderColor: 'var(--t-card-border)' }}>
+                    <td
+                      colSpan={2 + sortedPlans.length}
+                      className="py-4 text-center align-middle"
+                      style={{ borderColor: 'var(--t-card-border)' }}
+                    >
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={cn(
+                              'text-base font-medium',
+                              isYearlyForced && 'opacity-50 cursor-not-allowed'
+                            )}
+                            style={!isYearly ? { color: 'var(--t-accent)' } : { color: 'var(--t-muted)' }}
+                          >
+                            Monthly
+                          </span>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={isYearly}
+                            disabled={isYearlyForced}
+                            onClick={handleToggleInterval}
+                            className={cn(
+                              'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors',
+                              isYearlyForced ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
+                              'focus:outline-none focus:ring-2 focus:ring-offset-2'
+                            )}
+                            style={{ background: isYearly ? 'var(--t-accent)' : 'var(--t-card-border)', ['--tw-ring-color' as string]: 'var(--t-accent)' }}
+                          >
+                            <span
+                              className={cn(
+                                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition',
+                                isYearly ? 'translate-x-5' : 'translate-x-1'
+                              )}
+                            />
+                          </button>
+                          <span
+                            className={cn('text-base font-medium', isYearlyForced && 'opacity-100')}
+                            style={isYearly ? { color: 'var(--t-accent)' } : { color: 'var(--t-muted)' }}
+                          >
+                            Yearly
+                            <span className="ml-1.5 rounded bg-green-100 px-1.5 py-0.5 text-xs font-semibold text-green-800">
+                              One month free!
+                            </span>
+                          </span>
+                        </div>
+                        {isYearlyForced && (
+                          <p className="text-sm text-muted">Your plan is yearly. Upgrades must be yearly.</p>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
                   <tr className="border-b" style={{ borderColor: 'var(--t-card-border)' }}>
                     <td className="py-3 pr-4 font-semibold" style={{ color: 'var(--t-muted)', fontSize: '1rem' }}>Select</td>
                     {sortedPlans.map((p) => {
@@ -476,7 +484,7 @@ export default function SettingsBilling() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2 max-w-4xl mx-auto">
             <div className="body-text" style={{ color: 'var(--t-muted)' }}>
               {subscription != null && plan ? (
                 <>

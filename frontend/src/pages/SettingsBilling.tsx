@@ -132,7 +132,6 @@ export default function SettingsBilling() {
   const usage = (data?.data?.usage ?? {}) as Record<string, number>
   const plans = (data?.data?.plans ?? []) as Plan[]
   const freeTrialUsed = !!data?.data?.free_trial_used
-  const noSubscription = subscription == null
 
   const currentPlanId = plan?.id ?? null
   const currentInterval = (subscription?.billing_interval ?? 'monthly').toLowerCase() as 'monthly' | 'yearly'
@@ -149,19 +148,19 @@ export default function SettingsBilling() {
     [plans]
   )
 
-  const pickerPlans = useMemo(() => {
-    const paid = sortedPlans.filter((p) => (p.price_monthly ?? 0) > 0)
-    if (freeTrialUsed) return paid
-    const trial = sortedPlans.find((p) => p.slug === 'free_trial')
-    return trial ? [trial, ...paid] : paid
-  }, [sortedPlans, freeTrialUsed])
-
   const currentIdx = sortedPlans.findIndex((p) => p.id === currentPlanId)
   const selectablePlanIds = useMemo(() => {
     const ids: number[] = []
     for (let i = 0; i < sortedPlans.length; i++) {
       const p = sortedPlans[i]
-      if (p.price_monthly === 0) continue
+      const isTrial = p.slug === 'free_trial'
+      if (isTrial) {
+        if (currentIdx >= 0) continue
+        if (freeTrialUsed) continue
+        ids.push(p.id)
+        continue
+      }
+      if ((p.price_monthly ?? 0) === 0) continue
       if (currentIdx < 0) {
         ids.push(p.id)
         continue
@@ -175,24 +174,24 @@ export default function SettingsBilling() {
       ids.push(p.id)
     }
     return ids
-  }, [sortedPlans, currentIdx, isYearlyForced])
+  }, [sortedPlans, currentIdx, isYearlyForced, freeTrialUsed])
+
+  const selectedPlan = sortedPlans.find((p) => p.id === selectedPlanId)
+  const effectiveCurrentPlanId = subscription != null ? currentPlanId : null
+  const selectedIsTrial = selectedPlan?.slug === 'free_trial'
+  const selectedIsPaid = selectedPlan != null && (selectedPlan.price_monthly ?? 0) > 0
 
   useEffect(() => {
-    if (noSubscription) return
     if (selectedPlanId != null) return
     const firstSelectable = selectablePlanIds[0]
     if (firstSelectable != null) setSelectedPlanId(firstSelectable)
     else if (currentPlanId != null) setSelectedPlanId(currentPlanId)
-  }, [noSubscription, currentPlanId, selectedPlanId, selectablePlanIds])
+  }, [currentPlanId, selectedPlanId, selectablePlanIds])
 
   const { data: quoteData } = useQuery({
     queryKey: ['billing-quote', selectedPlanId, isYearly],
     queryFn: () => settingsApi.billingQuote({ plan_id: selectedPlanId!, interval: isYearly ? 'yearly' : 'monthly' }),
-    enabled:
-      !!selectedPlanId &&
-      (noSubscription
-        ? (sortedPlans.find((p) => p.id === selectedPlanId)?.price_monthly ?? 0) > 0
-        : selectablePlanIds.includes(selectedPlanId)),
+    enabled: !!selectedPlanId && selectedIsPaid && selectablePlanIds.includes(selectedPlanId),
   })
 
   const quote = quoteData?.data
@@ -200,8 +199,6 @@ export default function SettingsBilling() {
   const allowed = !!quote?.allowed
   const proratedCredit = typeof quote?.prorated_credit === 'number' ? quote.prorated_credit : 0
   const currency = quote?.currency ?? 'USD'
-
-  const selectedPlan = sortedPlans.find((p) => p.id === selectedPlanId)
 
   const allLimitKeys = Array.from(
     new Set(plans.flatMap((p) => (p.limits ? Object.keys(p.limits) : [])))
@@ -241,115 +238,20 @@ export default function SettingsBilling() {
     setInterval((i) => (i === 'monthly' ? 'yearly' : 'monthly'))
   }
 
-  const handleSubscribe = (p: Plan) => {
-    setSelectedPlanId(p.id)
-    setPaymentOpen(true)
-  }
-
   return (
     <div className="space-y-8">
       <div>
         <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>
-          {noSubscription ? 'Choose your plan' : 'Subscription & Billing'}
+          Subscription & Billing
         </h1>
         <p className="text-muted mt-1 body-text">
-          {noSubscription ? 'Start with a free trial or pick a plan.' : 'Current plan, usage, and compare all plans'}
+          Compare plans, then select one to subscribe.
         </p>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-muted" />
-        </div>
-      ) : noSubscription ? (
-        <div className="card card-body">
-          <h2 className="section-title mb-4" style={{ color: 'var(--t-main-text)' }}>
-            Plans
-          </h2>
-          <div className="flex items-center gap-3 justify-center mb-6">
-            <span
-              className="text-base font-medium"
-              style={!isYearly ? { color: 'var(--t-accent)' } : { color: 'var(--t-muted)' }}
-            >
-              Monthly
-            </span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isYearly}
-              onClick={() => setInterval((i) => (i === 'monthly' ? 'yearly' : 'monthly'))}
-              className="relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2"
-              style={{ background: isYearly ? 'var(--t-accent)' : 'var(--t-card-border)', ['--tw-ring-color' as string]: 'var(--t-accent)' }}
-            >
-              <span
-                className={cn(
-                  'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition',
-                  isYearly ? 'translate-x-5' : 'translate-x-1'
-                )}
-              />
-            </button>
-            <span
-              className="text-base font-medium"
-              style={isYearly ? { color: 'var(--t-accent)' } : { color: 'var(--t-muted)' }}
-            >
-              Yearly
-              <span className="ml-1.5 rounded bg-green-100 px-1.5 py-0.5 text-xs font-semibold text-green-800">
-                One month free!
-              </span>
-            </span>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {pickerPlans.map((p) => {
-              const isTrial = p.slug === 'free_trial'
-              const { text, sub } = displayPrice(p)
-              return (
-                <div
-                  key={p.id}
-                  className="rounded-xl border-2 p-5 flex flex-col gap-3"
-                  style={{ borderColor: 'var(--t-card-border)', background: 'var(--t-card-bg)' }}
-                >
-                  <div className="font-bold body-text" style={{ color: 'var(--t-main-text)', fontSize: '1.125rem' }}>
-                    {p.name}
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="font-bold" style={{ color: 'var(--t-accent)' }}>{text}</span>
-                    {sub && <span className="text-muted text-sm">{sub}</span>}
-                  </div>
-                  {isTrial && (
-                    <p className="text-muted body-text text-sm">
-                      14 days · 1 store, 50 products, 20 listings, 100 orders, 20 mockups
-                    </p>
-                  )}
-                  {isTrial ? (
-                    <button
-                      type="button"
-                      onClick={() => startTrialMutation.mutate()}
-                      disabled={startTrialMutation.isPending}
-                      className="btn-primary mt-auto"
-                    >
-                      {startTrialMutation.isPending ? 'Starting…' : 'Start free trial'}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleSubscribe(p)}
-                      className="btn-primary mt-auto"
-                    >
-                      Subscribe
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-          <PaymentModal
-            open={paymentOpen}
-            onClose={() => setPaymentOpen(false)}
-            total={total}
-            currency={currency}
-            planName={selectedPlan?.name ?? ''}
-            interval={isYearly ? 'yearly' : 'monthly'}
-          />
         </div>
       ) : (
         <>
@@ -415,28 +317,35 @@ export default function SettingsBilling() {
                 <thead>
                   <tr className="border-b-2" style={{ borderColor: 'var(--t-card-border)' }}>
                     <th className="text-left py-4 pr-4 font-semibold whitespace-nowrap" style={{ color: 'var(--t-muted)', fontSize: '1rem' }}> </th>
-                    {sortedPlans.map((p) => (
-                      <th
-                        key={p.id}
-                        className={cn(
-                          'text-center py-4 px-3 font-bold',
-                          currentPlanId === p.id && 'ring-2 ring-inset'
-                        )}
-                        style={{
-                          color: 'var(--t-main-text)',
-                          fontSize: '1rem',
-                          backgroundColor: currentPlanId === p.id ? 'var(--t-sidebar-active-bg)' : undefined,
-                          ['--tw-ring-color' as string]: currentPlanId === p.id ? 'var(--t-accent)' : undefined,
-                        }}
-                      >
-                        <div className="font-semibold">{p.name}</div>
-                        {currentPlanId === p.id && (
-                          <span className="inline-block mt-1 rounded px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-800">
-                            Your plan
-                          </span>
-                        )}
-                      </th>
-                    ))}
+                    {sortedPlans.map((p) => {
+                      const isCurrent = effectiveCurrentPlanId === p.id
+                      const trialUsed = p.slug === 'free_trial' && freeTrialUsed
+                      return (
+                        <th
+                          key={p.id}
+                          className={cn(
+                            'text-center py-4 px-3 font-bold',
+                            isCurrent && 'ring-2 ring-inset'
+                          )}
+                          style={{
+                            color: 'var(--t-main-text)',
+                            fontSize: '1rem',
+                            backgroundColor: isCurrent ? 'var(--t-sidebar-active-bg)' : undefined,
+                            ['--tw-ring-color' as string]: isCurrent ? 'var(--t-accent)' : undefined,
+                          }}
+                        >
+                          <div className="font-semibold">{p.name}</div>
+                          {isCurrent && (
+                            <span className="inline-block mt-1 rounded px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-800">
+                              Your plan
+                            </span>
+                          )}
+                          {trialUsed && (
+                            <span className="inline-block mt-1 rounded px-2 py-0.5 text-xs text-muted">Already used</span>
+                          )}
+                        </th>
+                      )
+                    })}
                     <th
                       className="text-center py-4 px-3 font-bold"
                       style={{ color: 'var(--t-main-text)', borderLeft: '2px solid var(--t-card-border)', background: 'rgba(59,130,246,0.12)' }}
@@ -449,7 +358,7 @@ export default function SettingsBilling() {
                   <tr className="border-b" style={{ borderColor: 'var(--t-card-border)' }}>
                     <td className="py-3 pr-4 font-semibold" style={{ color: 'var(--t-muted)', fontSize: '1rem' }}>Select</td>
                     {sortedPlans.map((p) => {
-                      const isCurrent = currentPlanId === p.id
+                      const isCurrent = effectiveCurrentPlanId === p.id
                       const canSelect = selectablePlanIds.includes(p.id)
                       const isSelected = selectedPlanId === p.id
                       return (
@@ -486,7 +395,7 @@ export default function SettingsBilling() {
                     <td className="py-3 pr-4 font-semibold" style={{ color: 'var(--t-main-text)', fontSize: '1rem' }}>Price</td>
                     {sortedPlans.map((p) => {
                       const { text, sub } = displayPrice(p)
-                      const isCurrent = currentPlanId === p.id
+                      const isCurrent = effectiveCurrentPlanId === p.id
                       return (
                         <td
                           key={p.id}
@@ -509,7 +418,7 @@ export default function SettingsBilling() {
                         </td>
                         {sortedPlans.map((p) => {
                           const limitVal = p.limits?.[key] as number | undefined
-                          const isCurrent = currentPlanId === p.id
+                          const isCurrent = effectiveCurrentPlanId === p.id
                           return (
                             <td
                               key={p.id}
@@ -542,7 +451,7 @@ export default function SettingsBilling() {
                           <div className="text-sm opacity-75">{meta.description}</div>
                         </td>
                         {sortedPlans.map((p) => {
-                          const isCurrent = currentPlanId === p.id
+                          const isCurrent = effectiveCurrentPlanId === p.id
                           return (
                             <td
                               key={p.id}
@@ -569,53 +478,77 @@ export default function SettingsBilling() {
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-2">
             <div className="body-text" style={{ color: 'var(--t-muted)' }}>
-              {plan ? (
+              {subscription != null && plan ? (
                 <>
                   <span className="font-semibold" style={{ color: 'var(--t-main-text)' }}>Current plan:</span>{' '}
                   {plan.name}
-                  {subscription != null && (
-                    <span className={subscription?.auto_renew !== false ? 'text-green-600' : 'text-amber-600'}>
-                      {' '}({subscription?.auto_renew !== false ? 'Auto-renew' : 'Cancelled'})
-                    </span>
-                  )}
+                  <span className={subscription?.auto_renew !== false ? ' text-green-600' : ' text-amber-600'}>
+                    {' '}({subscription?.auto_renew !== false ? 'Auto-renew' : 'Cancelled'})
+                  </span>
                   {' '}({plan.price_monthly === 0 ? 'Free' : `$${Number(plan.price_monthly ?? 0).toFixed(2)}/month`}).
                   {' '}Start: {formatDate(subscription?.current_period_start)}.
                   {' '}Expires: {formatDate(subscription?.current_period_end)}.
                 </>
               ) : (
-                <>No active subscription. Using default (Starter) limits.</>
+                <>No active subscription. Using default (Starter) limits. Select a plan above to subscribe.</>
               )}
             </div>
             <div className="flex flex-col items-stretch sm:items-end gap-2">
-              <div className="flex flex-wrap items-baseline gap-4 body-text">
-                {proratedCredit > 0 && (
-                  <span className="text-muted">
-                    Prorated credit: −{currency} {proratedCredit.toFixed(2)}
-                  </span>
-                )}
-                <span className="text-xl font-bold" style={{ color: 'var(--t-main-text)' }}>
-                  Total: {currency} {total.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setPaymentOpen(true)}
-                  disabled={!allowed || !selectedPlanId || total <= 0 || !selectablePlanIds.includes(selectedPlanId)}
-                  className="btn-primary"
-                >
-                  Pay {currency} {total.toFixed(2)}
-                </button>
-                {subscription != null && subscription?.auto_renew !== false && (
+              {selectedIsTrial ? (
+                <div className="flex flex-wrap gap-2 justify-end">
                   <button
                     type="button"
-                    onClick={() => setCancelConfirmOpen(true)}
-                    className="btn-secondary"
+                    onClick={() => startTrialMutation.mutate()}
+                    disabled={startTrialMutation.isPending}
+                    className="btn-primary"
                   >
-                    Cancel
+                    {startTrialMutation.isPending ? 'Starting…' : 'Start free trial'}
                   </button>
-                )}
-              </div>
+                  {subscription != null && subscription?.auto_renew !== false && (
+                    <button
+                      type="button"
+                      onClick={() => setCancelConfirmOpen(true)}
+                      className="btn-secondary"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              ) : selectedIsPaid ? (
+                <>
+                  <div className="flex flex-wrap items-baseline gap-4 body-text">
+                    {proratedCredit > 0 && (
+                      <span className="text-muted">
+                        Prorated credit: −{currency} {proratedCredit.toFixed(2)}
+                      </span>
+                    )}
+                    <span className="text-xl font-bold" style={{ color: 'var(--t-main-text)' }}>
+                      Total: {currency} {total.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentOpen(true)}
+                      disabled={!allowed || !selectedPlanId || total <= 0 || !selectablePlanIds.includes(selectedPlanId)}
+                      className="btn-primary"
+                    >
+                      Pay {currency} {total.toFixed(2)}
+                    </button>
+                    {subscription != null && subscription?.auto_renew !== false && (
+                      <button
+                        type="button"
+                        onClick={() => setCancelConfirmOpen(true)}
+                        className="btn-secondary"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="body-text text-muted">Select a plan above to subscribe.</p>
+              )}
             </div>
           </div>
 

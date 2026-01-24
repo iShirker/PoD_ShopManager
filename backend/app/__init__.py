@@ -64,6 +64,12 @@ def create_app(config_name='default'):
     from app.blueprints.shops import shops_bp
     from app.blueprints.products import products_bp
     from app.blueprints.templates import templates_bp
+    from app.blueprints.listings import listings_bp
+    from app.blueprints.orders import orders_bp
+    from app.blueprints.pricing import pricing_bp
+    from app.blueprints.discounts import discounts_bp
+    from app.blueprints.analytics import analytics_bp
+    from app.blueprints.settings import settings_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api/users')
@@ -71,6 +77,12 @@ def create_app(config_name='default'):
     app.register_blueprint(shops_bp, url_prefix='/api/shops')
     app.register_blueprint(products_bp, url_prefix='/api/products')
     app.register_blueprint(templates_bp, url_prefix='/api/templates')
+    app.register_blueprint(listings_bp, url_prefix='/api/listings')
+    app.register_blueprint(orders_bp, url_prefix='/api/orders')
+    app.register_blueprint(pricing_bp, url_prefix='/api/pricing')
+    app.register_blueprint(discounts_bp, url_prefix='/api/discounts')
+    app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
+    app.register_blueprint(settings_bp, url_prefix='/api/settings')
 
     # JWT error handlers - ensure CORS headers are set
     @jwt.expired_token_loader

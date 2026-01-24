@@ -266,4 +266,65 @@ export const templatesApi = {
   }) => api.post(`/templates/${templateId}/preview`, data),
 }
 
+// Listings API (unified shop products)
+export const listingsApi = {
+  list: (params?: { page?: number; per_page?: number; shop_id?: number; supplier?: string; search?: string }) =>
+    api.get('/listings', { params }),
+  get: (listingId: number) => api.get(`/listings/${listingId}`),
+}
+
+// Orders API
+export const ordersApi = {
+  list: (params?: { page?: number; per_page?: number; platform?: string; shop_id?: number; status?: string }) =>
+    api.get('/orders', { params }),
+  get: (orderId: number) => api.get(`/orders/${orderId}`),
+  fulfillment: (params?: { page?: number; per_page?: number }) =>
+    api.get('/orders/fulfillment', { params }),
+}
+
+// Pricing API
+export const pricingApi = {
+  calculator: (params: { platform?: string; price?: number; cost?: number; is_offsite_ad?: boolean; has_shopify_payments?: boolean }) =>
+    api.get('/pricing/calculator', { params }),
+  calculatorPost: (data: { platform?: string; price?: number; cost?: number; is_offsite_ad?: boolean; has_shopify_payments?: boolean }) =>
+    api.post('/pricing/calculator', data),
+  rules: {
+    list: () => api.get('/pricing/rules'),
+    create: (data: Partial<{ user_product_id: number; product_id: number; base_cost: number; markup_percentage: number; markup_fixed: number; min_price: number; target_margin: number; final_price: number; currency: string }>) =>
+      api.post('/pricing/rules', data),
+    get: (ruleId: number) => api.get(`/pricing/rules/${ruleId}`),
+    update: (ruleId: number, data: Partial<{ base_cost: number; markup_percentage: number; markup_fixed: number; min_price: number; target_margin: number; final_price: number; currency: string }>) =>
+      api.patch(`/pricing/rules/${ruleId}`, data),
+    delete: (ruleId: number) => api.delete(`/pricing/rules/${ruleId}`),
+  },
+}
+
+// Discounts API
+export const discountsApi = {
+  list: () => api.get('/discounts'),
+  create: (data: { name: string; description?: string; discount_type: string; discount_value?: number; start_date?: string; end_date?: string; is_recurring?: boolean; recurrence_pattern?: string; min_margin_required?: number; is_active?: boolean }) =>
+    api.post('/discounts', data),
+  get: (programId: number) => api.get(`/discounts/${programId}`),
+  update: (programId: number, data: Partial<{ name: string; description: string; discount_type: string; discount_value: number; start_date: string; end_date: string; is_recurring: boolean; recurrence_pattern: string; min_margin_required: number; is_active: boolean }>) =>
+    api.patch(`/discounts/${programId}`, data),
+  delete: (programId: number) => api.delete(`/discounts/${programId}`),
+  addProduct: (programId: number, data: { user_product_id?: number; product_id?: number }) =>
+    api.post(`/discounts/${programId}/products`, data),
+  removeProduct: (programId: number, mappingId: number) =>
+    api.delete(`/discounts/${programId}/products/${mappingId}`),
+}
+
+// Analytics API
+export const analyticsApi = {
+  overview: (params?: { period?: '7d' | '30d' | '90d' }) =>
+    api.get('/analytics/overview', { params }),
+  products: (params?: { period?: string }) => api.get('/analytics/products', { params }),
+  profitability: (params?: { period?: string }) => api.get('/analytics/profitability', { params }),
+}
+
+// Settings API
+export const settingsApi = {
+  billing: () => api.get('/settings/billing'),
+}
+
 export default api

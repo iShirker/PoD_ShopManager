@@ -19,6 +19,7 @@ def run_startup_migrations(db, app):
             _migrate_api_key_column_size(db)
             _migrate_user_products_tables(db)
             _migrate_template_products_pricing(db)
+            _migrate_subscription_and_new_tables(db, app)
             app.logger.info("Startup migrations completed successfully")
         except Exception as e:
             app.logger.error(f"Startup migration error: {e}")
@@ -221,3 +222,101 @@ def _migrate_template_products_pricing(db):
                 print("Set default pricing_mode for existing rows")
             except Exception as e:
                 print(f"Could not set default pricing_mode: {e}")
+
+
+def _migrate_subscription_and_new_tables(db, app):
+    """
+    Create new tables (subscription, order, pricing, discount) and seed subscription_plans.
+    db.create_all() creates missing tables; this migration seeds data.
+    """
+    from app.models import SubscriptionPlan
+    db.create_all()
+    if SubscriptionPlan.query.count() > 0:
+        return
+    plans = [
+        {
+            'slug': 'free_trial',
+            'name': 'Free Trial',
+            'price_monthly': 0,
+            'price_yearly': None,
+            'limits': {
+                'stores': 1,
+                'products': 50,
+                'listings': 20,
+                'orders_total': 100,
+                'mockups_total': 20,
+                'storage_mb': 100,
+                'seo_suggestions': 20,
+                'discount_programs': 1,
+                'discount_products': 10,
+            },
+            'features': {'api_access': False, 'priority_support': False},
+        },
+        {
+            'slug': 'starter',
+            'name': 'Starter',
+            'price_monthly': 19.99,
+            'price_yearly': 199.90,
+            'limits': {
+                'stores': 1,
+                'products': 200,
+                'listings': 100,
+                'orders_monthly': 500,
+                'mockups_monthly': 100,
+                'storage_mb': 500,
+                'seo_suggestions_monthly': 100,
+                'discount_programs': 2,
+                'discount_products': 25,
+            },
+            'features': {'api_access': False, 'priority_support': False},
+        },
+        {
+            'slug': 'growth',
+            'name': 'Growth',
+            'price_monthly': 49.99,
+            'price_yearly': 499.90,
+            'limits': {
+                'stores': 3,
+                'products': 1000,
+                'listings': 500,
+                'orders_monthly': 2000,
+                'mockups_monthly': 500,
+                'storage_mb': 2048,
+                'seo_suggestions_monthly': 500,
+                'discount_programs': 5,
+                'discount_products': 100,
+            },
+            'features': {'api_access': 'read_only', 'priority_support': False},
+        },
+        {
+            'slug': 'scale',
+            'name': 'Scale',
+            'price_monthly': 99.99,
+            'price_yearly': 999.90,
+            'limits': {
+                'stores': 10,
+                'products': 5000,
+                'listings': 2500,
+                'orders_monthly': 10000,
+                'mockups_monthly': 2000,
+                'storage_mb': 10240,
+                'seo_suggestions_monthly': 2000,
+                'discount_programs': 15,
+                'discount_products': 500,
+            },
+            'features': {'api_access': True, 'priority_support': True},
+        },
+    ]
+    for p in plans:
+        plan = SubscriptionPlan(
+            slug=p['slug'],
+            name=p['name'],
+            price_monthly=p['price_monthly'],
+            price_yearly=p.get('price_yearly'),
+            limits=p['limits'],
+            features=p['features'],
+            is_active=True,
+        )
+        db.session.add(plan)
+    db.session.commit()
+    app.logger.info("Seeded subscription_plans")

@@ -336,15 +336,19 @@ export default function SettingsBilling() {
                             disabled={isYearlyForced}
                             onClick={handleToggleInterval}
                             className={cn(
-                              'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors',
+                              'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 transition-colors',
                               isYearlyForced ? 'cursor-not-allowed opacity-70' : 'cursor-pointer',
                               'focus:outline-none focus:ring-2 focus:ring-offset-2'
                             )}
-                            style={{ background: isYearly ? 'var(--t-accent)' : 'var(--t-card-border)', ['--tw-ring-color' as string]: 'var(--t-accent)' }}
+                            style={{
+                              background: isYearly ? 'var(--t-accent)' : 'var(--t-muted)',
+                              borderColor: isYearly ? 'var(--t-accent)' : 'var(--t-muted)',
+                              ['--tw-ring-color' as string]: 'var(--t-accent)',
+                            }}
                           >
                             <span
                               className={cn(
-                                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition',
+                                'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition border border-black/10',
                                 isYearly ? 'translate-x-5' : 'translate-x-1'
                               )}
                             />
@@ -389,9 +393,9 @@ export default function SettingsBilling() {
                               onClick={() => setSelectedPlanId(p.id)}
                               className={cn(
                                 'inline-flex items-center justify-center w-6 h-6 rounded-full border-2 transition-colors',
-                                isSelected ? 'border-[var(--t-accent)] bg-[var(--t-sidebar-active-bg)]' : 'border-[var(--t-card-border)]'
+                                isSelected ? 'border-[var(--t-accent)] bg-[var(--t-sidebar-active-bg)]' : 'border-[var(--t-muted)]'
                               )}
-                              style={{ borderColor: isSelected ? 'var(--t-accent)' : 'var(--t-card-border)' }}
+                              style={{ borderColor: isSelected ? 'var(--t-accent)' : 'var(--t-muted)' }}
                               aria-pressed={isSelected}
                               aria-label={`Select ${p.name}`}
                             >

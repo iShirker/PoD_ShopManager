@@ -46,6 +46,25 @@ python test_printify_token.py
 
 Scripts that need environment variables will automatically load them from `backend/.env`. Make sure your `.env` file is configured in the backend folder.
 
+## E2E and Main_Test
+
+E2E tests live in `frontend/e2e/` (Playwright). Main_Test runs all of them and writes a markdown report to `TestReports/`.
+
+**Local (frontend dev server + backend):**
+```bash
+cd frontend
+npm run dev   # in one terminal
+# In another:
+BASE_URL=http://localhost:3000 npm run main-test
+```
+
+**Deployed:** After deployment, run against your deployed frontend URL:
+```bash
+cd frontend
+BASE_URL=https://your-deployed-frontend.up.railway.app npm run main-test
+```
+Reports are written to `TestReports/TestReport_*.md`. Use `/version` (frontend) and `GET /api/health` (backend) to confirm both are up.
+
 ## Notes
 
 - These scripts are for development/testing only

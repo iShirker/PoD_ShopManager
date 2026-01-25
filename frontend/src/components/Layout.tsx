@@ -37,9 +37,10 @@ import { getHelpEntryForPath } from '../help/helpRegistry'
 
 export interface NavItem {
   name: string
-  href: string
+  href?: string
   icon: React.ElementType
   badge?: 'P1' | 'P2'
+  action?: 'logout'
 }
 
 export interface NavSection {
@@ -116,9 +117,17 @@ const navSections: NavSection[] = [
       { name: 'Profitability Reports', href: '/analytics/profitability', icon: DollarSign, badge: 'P2' },
     ],
   },
+  {
+    title: 'ACCOUNT',
+    items: [
+      { name: 'Profile', href: '/profile', icon: User },
+      { name: 'Billing', href: '/settings/billing', icon: CreditCard },
+      { name: 'Logout', icon: LogOut, action: 'logout' },
+    ],
+  },
 ]
 
-const navItemHrefs = navSections.flatMap((s) => s.items.map((i) => i.href))
+const navItemHrefs = navSections.flatMap((s) => s.items.map((i) => i.href).filter(Boolean) as string[])
 
 /**
  * If a nav item has a child route *also present in the menu*, we want the parent
@@ -154,9 +163,9 @@ export default function Layout() {
   }
 
   const renderNav = (mobile = false) => (
-    <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+    <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto min-h-0">
       {navSections.map((section) => {
-        const hasActive = section.items.some((i) => isActive(i.href))
+        const hasActive = section.items.some((i) => (i.href ? isActive(i.href) : false))
         const isCollapsed = collapsed[section.title] === true
         const isOpen = collapsed[section.title] !== undefined ? !isCollapsed : hasActive
         return (
@@ -171,26 +180,43 @@ export default function Layout() {
             </button>
             {(mobile || isOpen) &&
               section.items.map((item) => (
-                <NavLink
-                  key={item.name}
-                  to={item.href}
-                  end={shouldNavLinkEnd(item.href)}
-                  onClick={() => mobile && setSidebarOpen(false)}
-                  className={({ isActive: active }) =>
-                    cn(
-                      'app-nav-link flex items-center px-3 py-2 text-sm font-medium rounded-lg mt-0.5',
-                      active && 'active'
-                    )
-                  }
-                >
-                  <item.icon className="w-5 h-5 mr-3 shrink-0" />
-                  <span className="flex-1 truncate">{item.name}</span>
-                  {item.badge && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-600">
-                      {item.badge}
-                    </span>
-                  )}
-                </NavLink>
+                item.href ? (
+                  <NavLink
+                    key={item.name}
+                    to={item.href}
+                    end={shouldNavLinkEnd(item.href)}
+                    onClick={() => mobile && setSidebarOpen(false)}
+                    className={({ isActive: active }) =>
+                      cn(
+                        'app-nav-link flex items-center px-3 py-2 text-sm font-medium rounded-lg mt-0.5',
+                        active && 'active'
+                      )
+                    }
+                  >
+                    <item.icon className="w-5 h-5 mr-3 shrink-0" />
+                    <span className="flex-1 truncate">{item.name}</span>
+                    {item.badge && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-600">
+                        {item.badge}
+                      </span>
+                    )}
+                  </NavLink>
+                ) : (
+                  <button
+                    key={item.name}
+                    type="button"
+                    onClick={() => {
+                      if (item.action === 'logout') handleLogout()
+                      if (mobile) setSidebarOpen(false)
+                    }}
+                    className={cn(
+                      'app-nav-link flex items-center px-3 py-2 text-sm font-medium rounded-lg mt-0.5 w-full text-left'
+                    )}
+                  >
+                    <item.icon className="w-5 h-5 mr-3 shrink-0" />
+                    <span className="flex-1 truncate">{item.name}</span>
+                  </button>
+                )
               ))}
           </div>
         )
@@ -203,7 +229,7 @@ export default function Layout() {
       {/* Mobile sidebar */}
       <div className={cn('fixed inset-0 z-50 lg:hidden', sidebarOpen ? 'block' : 'hidden')}>
         <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-        <div className="fixed inset-y-0 left-0 w-64 app-sidebar shadow-xl flex flex-col min-w-0">
+        <div className="fixed inset-y-0 left-0 w-64 app-sidebar shadow-xl flex flex-col min-w-0 min-h-0">
           <div className="flex items-center justify-between px-4 py-4 border-b shrink-0" style={{ borderColor: 'var(--t-sidebar-border)' }}>
             <span className="text-xl font-bold app-logo">POD Manager</span>
             <button onClick={() => setSidebarOpen(false)} className="app-nav-link p-1 rounded">
@@ -216,7 +242,7 @@ export default function Layout() {
 
       {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-1 app-sidebar min-w-0">
+        <div className="flex flex-col flex-1 app-sidebar min-w-0 min-h-0">
           <div className="flex items-center h-16 px-6 border-b shrink-0" style={{ borderColor: 'var(--t-sidebar-border)' }}>
             <span className="text-xl font-bold app-logo">POD Manager</span>
           </div>
@@ -236,20 +262,6 @@ export default function Layout() {
                 </p>
                 <p className="text-xs truncate text-muted">{user?.email}</p>
               </div>
-            </div>
-            <div className="mt-4 flex flex-col gap-2">
-              <NavLink to="/profile" className="flex items-center justify-center gap-2 btn-secondary text-xs py-2">
-                <User className="w-4 h-4" />
-                Profile
-              </NavLink>
-              <NavLink to="/settings/billing" className="flex items-center justify-center gap-2 btn-secondary text-xs py-2">
-                <CreditCard className="w-4 h-4" />
-                Billing
-              </NavLink>
-              <button onClick={handleLogout} className="flex items-center justify-center gap-2 btn-secondary text-xs py-2 text-red-600 hover:text-red-700">
-                <LogOut className="w-4 h-4" />
-                Logout
-              </button>
             </div>
           </div>
         </div>

@@ -9,6 +9,29 @@ interface ShopLoginModalProps {
   onClose: () => void
 }
 
+function normalizeShopifyShopInput(inputRaw: string): string | null {
+  const input = (inputRaw || '').trim()
+  if (!input) return null
+
+  // admin URL: https://admin.shopify.com/store/<storeName>
+  const adminMatch = input.match(/admin\.shopify\.com\/store\/([^/?#]+)/i)
+  if (adminMatch?.[1]) return adminMatch[1]
+
+  // full URL: https://<shop>.myshopify.com/...
+  const myshopifyUrlMatch = input.match(/https?:\/\/([^./?#]+)\.myshopify\.com/i)
+  if (myshopifyUrlMatch?.[1]) return myshopifyUrlMatch[1]
+
+  // raw domain: <shop>.myshopify.com
+  const myshopifyDomainMatch = input.match(/^([^./?#]+)\.myshopify\.com$/i)
+  if (myshopifyDomainMatch?.[1]) return myshopifyDomainMatch[1]
+
+  // already a subdomain
+  const subdomain = input.replace(/^\s+|\s+$/g, '')
+  if (/^[a-z0-9][a-z0-9-]*$/i.test(subdomain)) return subdomain
+
+  return null
+}
+
 export default function ShopLoginModal({ shopType, onClose }: ShopLoginModalProps) {
   const [shopDomain, setShopDomain] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -38,9 +61,21 @@ export default function ShopLoginModal({ shopType, onClose }: ShopLoginModalProp
       toast.error('Please enter your Shopify store name')
       return
     }
+
+    // Basic validation: keep only the shop subdomain. We accept:
+    // - "store-name"
+    // - "store-name.myshopify.com"
+    // - "https://store-name.myshopify.com/..."
+    // - "https://admin.shopify.com/store/store-name"
+    const normalized = normalizeShopifyShopInput(shopDomain)
+    if (!normalized) {
+      toast.error('Please enter a valid Shopify store (e.g., your-store or your-store.myshopify.com)')
+      return
+    }
+
     setIsLoading(true)
     try {
-      const response = await authApi.getShopifyAuthUrl(shopDomain)
+      const response = await authApi.getShopifyAuthUrl(normalized)
       if (response.data.auth_url) {
         window.location.href = response.data.auth_url
       }
@@ -185,7 +220,7 @@ export default function ShopLoginModal({ shopType, onClose }: ShopLoginModalProp
               <input
                 type="text"
                 value={shopDomain}
-                onChange={(e) => setShopDomain(e.target.value.replace(/\.myshopify\.com$/, '').trim())}
+                onChange={(e) => setShopDomain(e.target.value.trim())}
                 placeholder="your-store-name"
                 className="input rounded-r-none flex-1"
                 autoFocus
@@ -201,7 +236,7 @@ export default function ShopLoginModal({ shopType, onClose }: ShopLoginModalProp
               </span>
             </div>
             <p className="mt-2 text-xs text-gray-500">
-              Find this in your Shopify admin URL (e.g., your-store.myshopify.com)
+              You can paste your full Shopify admin URL (including `admin.shopify.com/store/...`) — we’ll extract the store automatically.
             </p>
           </div>
 

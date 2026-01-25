@@ -57,6 +57,49 @@ def _verify_shopify_hmac(query_args, secret: str) -> bool:
     return hmac.compare_digest(digest, str(provided_hmac))
 
 
+def _normalize_shopify_shop(shop_raw: str | None) -> str | None:
+    """
+    Accept common shop inputs and return a clean `<shop>.myshopify.com` hostname.
+    Examples accepted:
+    - devstore-123
+    - devstore-123.myshopify.com
+    - https://devstore-123.myshopify.com/...
+    - https://admin.shopify.com/store/devstore-123
+    """
+    if not shop_raw:
+        return None
+    shop = str(shop_raw).strip()
+    if not shop:
+        return None
+
+    import re
+    # admin URL
+    m = re.search(r'admin\.shopify\.com\/store\/([^\/\?#]+)', shop, re.IGNORECASE)
+    if m:
+        shop = m.group(1).strip()
+
+    # full URL to myshopify
+    m = re.search(r'https?:\/\/([^\/\?#]+)', shop, re.IGNORECASE)
+    if m:
+        host = m.group(1)
+        # if it's a myshopify host, keep it; otherwise leave as-is for next checks
+        shop = host
+
+    # raw myshopify domain
+    if shop.endswith('.myshopify.com'):
+        host = shop
+    else:
+        # validate subdomain only
+        if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9\-]*', shop):
+            return None
+        host = f"{shop}.myshopify.com"
+
+    # final sanity check
+    if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9\-]*\.myshopify\.com', host):
+        return None
+    return host
+
+
 @auth_bp.route('/register', methods=['POST'])
 @limiter.limit("5 per minute")
 def register():
@@ -339,9 +382,13 @@ def shopify_authorize():
     Redirect to Shopify OAuth authorization page for app installation.
     User must be logged in to connect a Shopify store.
     """
-    shop_domain = request.args.get('shop')
+    shop_domain_raw = request.args.get('shop')
+    shop_domain = _normalize_shopify_shop(shop_domain_raw)
     if not shop_domain:
-        return jsonify({'error': 'Shop domain is required'}), 400
+        return jsonify({
+            'error': 'Shop domain is required',
+            'details': 'Enter your store subdomain (e.g. "your-store") or "your-store.myshopify.com".'
+        }), 400
 
     user_id = get_jwt_identity()
     # Include user_id in state for callback

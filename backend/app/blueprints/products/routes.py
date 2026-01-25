@@ -64,8 +64,16 @@ def compare_products():
         shops_query = shops_query.filter_by(id=shop_id)
     shops = shops_query.all()
 
+    # If user has no connected shops yet, return an empty result (not 404)
+    # so the frontend can render a proper empty-state instead of treating it
+    # as a missing endpoint.
     if not shops:
-        return jsonify({'error': 'No connected shops found'}), 404
+        return jsonify({
+            'products': [],
+            'total': 0,
+            'suppliers_connected': [],
+            'message': 'No connected shops found'
+        }), 200
 
     shop_ids = [s.id for s in shops]
 
@@ -124,8 +132,12 @@ def get_comparison_overview():
 
     # Get user's shops
     shops = Shop.query.filter_by(user_id=user_id, is_connected=True).all()
+    # Same rationale as /compare: return a valid empty summary when no shops
+    # are connected yet.
     if not shops:
-        return jsonify({'error': 'No connected shops found'}), 404
+        summary = get_comparison_summary([], {})
+        summary['message'] = 'No connected shops found'
+        return jsonify(summary), 200
 
     shop_ids = [s.id for s in shops]
 

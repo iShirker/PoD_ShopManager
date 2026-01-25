@@ -12,7 +12,7 @@ export default function Analytics() {
   const o = data?.data ?? {}
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="analytics-page">
       <div>
         <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Analytics Overview</h1>
         <p className="text-muted mt-1 body-text">Revenue, orders, and profitability</p>

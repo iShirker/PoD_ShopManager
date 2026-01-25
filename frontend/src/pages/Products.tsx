@@ -63,7 +63,7 @@ export default function Products() {
   const types = productTypes?.data?.product_types || []
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="products-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Products</h1>

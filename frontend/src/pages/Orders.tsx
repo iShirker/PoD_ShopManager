@@ -15,7 +15,7 @@ export default function Orders() {
   const pagination = data?.data?.pagination
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="orders-page">
       <div>
         <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Orders</h1>
         <p className="text-muted mt-1 body-text">Orders from Etsy &amp; Shopify</p>

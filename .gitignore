@@ -12,3 +12,6 @@ frontend/.env.*
 .claude/
 **/.DS_Store
 **/Thumbs.db
+frontend/e2e-results.json
+frontend/test-results/
+TestReports/

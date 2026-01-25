@@ -2,33 +2,76 @@
 
 This document defines the **global navigation** (sidebar + routes) for all planned features. It maps menu items to product phases (MVP / Growth / Advanced) and subscription tiers where limits apply.
 
-**Related:** [PRODUCT_PLAN.md](./PRODUCT_PLAN.md) · [FEATURE_PRIORITY.md](./FEATURE_PRIORITY.md) · [SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md)
+**Related:** [PRODUCT_PLAN.md](./PRODUCT_PLAN.md) · [FEATURE_PRIORITY.md](./FEATURE_PRIORITY.md) · [SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md) · [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)
 
 ---
 
-## 0. Current vs Planned Menu
+## 0. Menu design rationale (same screen vs own screen)
 
-| Current (Layout.tsx) | Planned | Notes |
-|---------------------|---------|-------|
-| Dashboard `/` | Dashboard `/` | Same; expand with multi-store overview |
-| Shops `/shops` | Shops `/shops` | Same; under **Connections** |
-| Suppliers `/suppliers` | Suppliers `/suppliers` | Same; under **Connections** |
-| Products `/products` | My Products `/products` + Catalog `/products/catalog` | Split into list vs add-from-catalog |
-| Comparison `/comparison` | Compare Products `/comparison` | Same; under **Tools** |
-| Templates `/templates` | Templates `/templates` | Same; under **Tools** |
-| — | Listings, Bulk, SEO | **New** (Listings section) |
-| — | Orders, Fulfillment | **New** (Orders section) |
-| — | Pricing, Price Rules | **New** (Pricing section) |
-| — | Discounts | **New** [P1] |
-| — | Mockups, Templates | **New** [P1] |
-| — | Designs, Mappings | **New** [P2] |
-| — | Analytics (Overview, Products, Profitability) | **New** |
-| Profile `/profile` | Profile `/profile` | Same; in footer |
-| — | Subscription & Billing `/settings/billing` | **New** |
+**Principles:** Group by user workflow. Put **connection** tasks early (connect shops/suppliers before products/listings). Avoid a separate “Tools” section by placing Compare under Products and Templates under Listings.
+
+### Same screen (tabs or sub-views on one page)
+
+| Functions | Rationale | Current implementation |
+|-----------|-----------|-------------------------|
+| **Orders** + **Fulfillment** | Both are order-centric: “see all orders” vs “work the queue.” Same mental model; different filters. | Two routes (`/orders`, `/orders/fulfillment`). Can be merged later into one “Orders” page with “All” \| “Fulfillment” tabs. |
+| **Calculator** + **Price rules** | Both define “how I price.” Calculator = ad‑hoc; rules = persistent. | Two routes (`/pricing`, `/pricing/rules`). Can be merged into one “Pricing” page with tabs. |
+| **Analytics** Overview + **Product performance** + **Profitability** | All “how am I doing?” Different slices of the same data. | Three routes. Can be merged into one “Analytics” page with Overview \| Products \| Profitability tabs. |
+
+**Decision:** Keep separate nav items and routes for now. Consolidation into tabbed single screens can follow later.
+
+### Own screen (dedicated nav item + route)
+
+| Function | Rationale |
+|----------|-----------|
+| **Dashboard** | Entry point; multi‑store overview. |
+| **Shops** / **Suppliers** | Different entities (marketplaces vs PoD); separate connect/manage flows. |
+| **My Products** / **Catalog** | Different workflows: “manage my products” vs “browse supplier catalog and add.” |
+| **Compare & switch** | Product‑centric but distinct workflow (compare → switch). Own screen. |
+| **Listings** | Core listing list/search; sync. |
+| **Templates** | Listing templates → create listing. Placed under **Listings** (not “Tools”). |
+| **Bulk create** / **SEO Assistant** | Different flows from main Listings view. |
+| **Discounts** | Promo/sales workflow. |
+| **Mockup Studio** / **Customization templates** | Create mockups vs define placement rules; related but separate. |
+| **Designs** / **Design mappings** | Library vs mapping; separate UIs. |
+
+### Section order
+
+1. **Overview** — Dashboard first.
+2. **Connections** — Shops, Suppliers. Users must connect before products/listings; place high.
+3. **Products** — My Products, Catalog, **Compare & switch** (moved from Tools).
+4. **Listings** — Listings, **Templates** (moved from Tools), Bulk create, SEO Assistant.
+5. **Orders** — Orders, Fulfillment.
+6. **Pricing & profitability** — Calculator, Price rules.
+7. **Promotions** — Discounts (renamed from “Discount programs”).
+8. **Mockups & customization** — Mockup Studio, Customization templates.
+9. **Design library** — Designs, Design mappings.
+10. **Analytics** — Overview, Product performance, Profitability.
+
+**Removed:** Standalone **Tools** section. Compare → Products; Templates → Listings.
 
 ---
 
-## 1. Navigation Overview
+## 0b. Current vs planned menu
+
+| Current (Layout) | Revised | Notes |
+|------------------|---------|-------|
+| Dashboard `/` | Dashboard `/` | Same |
+| Shops, Suppliers (bottom) | **Connections** (Shops, Suppliers) | **Moved up** (second section) |
+| Products + Catalog | **Products** (My Products, Catalog, **Compare & switch**) | Compare moved from Tools → Products |
+| Listings, Bulk, SEO | **Listings** (Listings, **Templates**, Bulk, SEO) | Templates moved from Tools → Listings |
+| Orders, Fulfillment | **Orders** (same) | Same |
+| Pricing, Price Rules | **Pricing & profitability** (same) | Same |
+| Discounts | **Promotions** (Discounts) | Section renamed |
+| Mockups, Customization templates | **Mockups & customization** (same) | Section renamed |
+| Designs, Mappings | **Design library** (same) | Same |
+| Analytics (3 items) | **Analytics** (same) | Same |
+| **Tools** (Compare, Templates) | — | **Removed**; items moved to Products / Listings |
+| Profile, Billing | Same (footer) | Same |
+
+---
+
+## 1. Navigation Overview (revised)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -38,14 +81,20 @@ This document defines the **global navigation** (sidebar + routes) for all plann
 │  ▼ OVERVIEW                                                                 │
 │     Dashboard                                    /                           │
 │                                                                             │
+│  ▼ CONNECTIONS                                                              │
+│     Shops                                      /shops                        │
+│     Suppliers                                  /suppliers                    │
+│                                                                             │
 │  ▼ PRODUCTS                                                                 │
 │     My Products                                /products                     │
-│     Catalog (Add from Supplier)               /products/catalog              │
+│     Catalog                                    /products/catalog             │
+│     Compare & Switch                           /comparison                   │
 │                                                                             │
 │  ▼ LISTINGS                                                                 │
 │     Listings                                   /listings                     │
-│     Bulk Create                                 /listings/bulk     [P1]      │
-│     SEO Assistant                               /listings/seo      [P1]      │
+│     Templates                                  /templates                    │
+│     Bulk Create                                /listings/bulk       [P1]     │
+│     SEO Assistant                              /listings/seo        [P1]     │
 │                                                                             │
 │  ▼ ORDERS                                                                   │
 │     Orders                                     /orders                       │
@@ -55,41 +104,31 @@ This document defines the **global navigation** (sidebar + routes) for all plann
 │     Calculator                                 /pricing                      │
 │     Price Rules                                /pricing/rules                │
 │                                                                             │
-│  ▼ DISCOUNTS                         [P1]                                   │
-│     Discount Programs                          /discounts                    │
+│  ▼ PROMOTIONS                     [P1]                                       │
+│     Discounts                                  /discounts                    │
 │                                                                             │
-│  ▼ CUSTOMIZATION & MOCKUPS          [P1]                                    │
+│  ▼ MOCKUPS & CUSTOMIZATION       [P1]                                        │
 │     Mockup Studio                              /mockups                      │
 │     Customization Templates                    /mockups/templates            │
 │                                                                             │
-│  ▼ DESIGN LIBRARY                   [P2]                                    │
+│  ▼ DESIGN LIBRARY                 [P2]                                       │
 │     Designs                                    /designs                      │
-│     Product–Design Mappings                    /designs/mappings             │
+│     Design Mappings                            /designs/mappings             │
 │                                                                             │
 │  ▼ ANALYTICS                                                                 │
 │     Overview                                   /analytics                    │
 │     Product Performance                        /analytics/products   [P2]    │
 │     Profitability Reports                      /analytics/profitability [P2] │
 │                                                                             │
-│  ▼ CONNECTIONS                                                              │
-│     Shops                                      /shops                        │
-│     Suppliers                                  /suppliers                    │
-│                                                                             │
-│  ▼ COMPARISON                    (existing)                                 │
-│     Compare Products                           /comparison                   │
-│                                                                             │
-│  ▼ TEMPLATES                    (existing)                                  │
-│     Templates                                  /templates                    │
-│                                                                             │
 │  ─────────────────────────────────────────                                  │
 │  Profile                                       /profile                     │
-│  Subscription & Billing                        /settings/billing    [NEW]   │
+│  Billing                                       /settings/billing            │
 │  Log out                                                                     │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Legend:** `[P1]` = Growth-phase feature; `[P2]` = Advanced-phase feature; `[NEW]` = new route. Unmarked = MVP.
+**Legend:** `[P1]` = Growth-phase; `[P2]` = Advanced-phase. **Connections** moved up; **Compare & switch** under Products; **Templates** under Listings; **Tools** removed.
 
 ---
 
@@ -157,11 +196,11 @@ This document defines the **global navigation** (sidebar + routes) for all plann
 
 ---
 
-### 2.6 Discounts [P1]
+### 2.6 Promotions – Discounts [P1]
 
 | Item | Route | Icon | Phase | Description |
 |------|-------|------|--------|-------------|
-| **Discount Programs** | `/discounts` | `Percent` | P1 | Create/schedule programs; % or fixed; start/end; recurring; margin check; sync to Etsy/Shopify |
+| **Discounts** | `/discounts` | `Percent` | P1 | Create/schedule programs; % or fixed; start/end; recurring; margin check; sync to Etsy/Shopify |
 
 **Sub-views:**
 - Program detail (products, schedule, performance)
@@ -171,7 +210,7 @@ This document defines the **global navigation** (sidebar + routes) for all plann
 
 ---
 
-### 2.7 Customization & Mockups [P1]
+### 2.7 Mockups & Customization [P1]
 
 | Item | Route | Icon | Phase | Description |
 |------|-------|------|--------|-------------|
@@ -191,7 +230,7 @@ This document defines the **global navigation** (sidebar + routes) for all plann
 | Item | Route | Icon | Phase | Description |
 |------|-------|------|--------|-------------|
 | **Designs** | `/designs` | `Palette` | P2 | Upload, store, tag designs; versions; usage (listings/products) |
-| **Product–Design Mappings** | `/designs/mappings` | `GitBranch` | P2 | Map designs to products/placements; used in mockups and listings |
+| **Design Mappings** | `/designs/mappings` | `GitBranch` | P2 | Map designs to products/placements; used in mockups and listings |
 
 **Plan:** Growth / Scale (Design Library in subscription matrix).
 
@@ -221,20 +260,20 @@ This document defines the **global navigation** (sidebar + routes) for all plann
 
 ---
 
-### 2.11 Comparison (Existing)
+### 2.11 Compare & Switch (under Products)
 
 | Item | Route | Icon | Phase | Description |
 |------|-------|------|--------|-------------|
-| **Compare Products** | `/comparison` | `GitCompare` | MVP | Compare same product across suppliers; switch supplier |
+| **Compare & Switch** | `/comparison` | `GitCompare` | MVP | Compare same product across suppliers; switch supplier (single or bulk) |
 
 ---
 
-### 2.12 Templates (Existing)
+### 2.12 Templates (under Listings)
 
 | Item | Route | Icon | Phase | Description |
 |------|-------|------|--------|-------------|
 | **Templates** | `/templates` | `FileText` | MVP | Listing templates; default title/description/tags; link to products |
-| *Template detail* | `/templates/:templateId` | — | MVP | Edit template; products in template |
+| *Template detail* | `/templates/:templateId` | — | MVP | Edit template; products in template; create listing |
 
 ---
 
@@ -263,81 +302,80 @@ This document defines the **global navigation** (sidebar + routes) for all plann
 | `/orders/fulfillment` | Fulfillment | MVP |
 | `/pricing` | Calculator | MVP |
 | `/pricing/rules` | Price Rules | MVP |
-| `/discounts` | Discount Programs | P1 |
+| `/discounts` | Discounts | P1 |
 | `/mockups` | Mockup Studio | P1 |
 | `/mockups/templates` | Customization Templates | P1 |
 | `/designs` | Designs | P2 |
-| `/designs/mappings` | Product–Design Mappings | P2 |
+| `/designs/mappings` | Design Mappings | P2 |
 | `/analytics` | Analytics Overview | MVP |
 | `/analytics/products` | Product Performance | P2 |
 | `/analytics/profitability` | Profitability Reports | P2 |
 | `/shops` | Shops | MVP |
 | `/shops/:shopId` | Shop Detail | MVP |
 | `/suppliers` | Suppliers | MVP |
-| `/comparison` | Compare Products | MVP |
-| `/templates` | Templates | MVP |
+| `/comparison` | Compare & Switch (under Products) | MVP |
+| `/templates` | Templates (under Listings) | MVP |
 | `/templates/:templateId` | Template Detail | MVP |
 | `/profile` | Profile | MVP |
-| `/settings/billing` | Subscription & Billing | MVP |
+| `/settings/billing` | Billing | MVP |
 
 ---
 
-## 4. Sidebar Section Grouping
+## 4. Sidebar Section Grouping (revised)
 
-Group menu items into **collapsible sections** for clarity:
+Group menu items into **collapsible sections** in this order:
 
 ```
 1. OVERVIEW
    └── Dashboard
 
-2. PRODUCTS
-   └── My Products
-   └── Catalog (Add from Supplier)
+2. CONNECTIONS
+   └── Shops
+   └── Suppliers
 
-3. LISTINGS
+3. PRODUCTS
+   └── My Products
+   └── Catalog
+   └── Compare & Switch
+
+4. LISTINGS
    └── Listings
+   └── Templates
    └── Bulk Create        [P1]
    └── SEO Assistant      [P1]
 
-4. ORDERS
+5. ORDERS
    └── Orders
    └── Fulfillment
 
-5. PRICING & PROFITABILITY
+6. PRICING & PROFITABILITY
    └── Calculator
    └── Price Rules
 
-6. DISCOUNTS              [P1]
-   └── Discount Programs
+7. PROMOTIONS             [P1]
+   └── Discounts
 
-7. CUSTOMIZATION & MOCKUPS [P1]
+8. MOCKUPS & CUSTOMIZATION [P1]
    └── Mockup Studio
    └── Customization Templates
 
-8. DESIGN LIBRARY         [P2]
+9. DESIGN LIBRARY         [P2]
    └── Designs
-   └── Product–Design Mappings
+   └── Design Mappings
 
-9. ANALYTICS
-   └── Overview
-   └── Product Performance    [P2]
-   └── Profitability Reports  [P2]
+10. ANALYTICS
+    └── Overview
+    └── Product Performance    [P2]
+    └── Profitability Reports  [P2]
 
-10. CONNECTIONS
-    └── Shops
-    └── Suppliers
-
-11. TOOLS
-    └── Compare Products
-    └── Templates
-
-12. USER (footer)
+USER (footer)
     └── Profile
-    └── Subscription & Billing
+    └── Billing
     └── Log out
 ```
 
-Sections 6, 7, 8 can be **hidden or disabled** for users on plans that don’t include those features (see [SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md)).
+**Removed:** Standalone **Tools** section (Compare → Products, Templates → Listings).  
+Sections 7, 8, 9 can be **hidden or disabled** when the plan doesn’t include them (see [SUBSCRIPTION_PLANS.md](./SUBSCRIPTION_PLANS.md)).
 
 ---
 
@@ -372,7 +410,7 @@ Sections 6, 7, 8 can be **hidden or disabled** for users on plans that don’t i
 
 ---
 
-## 8. Sidebar Wireframe (Desktop)
+## 8. Sidebar Wireframe (Desktop, revised)
 
 ```
 ┌──────────────────────────────────────┐
@@ -380,42 +418,40 @@ Sections 6, 7, 8 can be **hidden or disabled** for users on plans that don’t i
 ├──────────────────────────────────────┤
 │  ▼ OVERVIEW                          │
 │    📊 Dashboard                      │
+│  ▼ CONNECTIONS                       │
+│    🏪 Shops                          │
+│    🚚 Suppliers                      │
 │  ▼ PRODUCTS                          │
 │    📦 My Products                    │
 │    ➕ Catalog                        │
+│    ⚖️ Compare & Switch               │
 │  ▼ LISTINGS                          │
 │    📋 Listings                       │
+│    📄 Templates                      │
 │    📚 Bulk Create          [P1]      │
 │    🔍 SEO Assistant        [P1]      │
 │  ▼ ORDERS                            │
 │    🛒 Orders                         │
 │    🚚 Fulfillment                    │
-│  ▼ PRICING                           │
+│  ▼ PRICING & PROFITABILITY           │
 │    🧮 Calculator                     │
 │    ⚙️ Price Rules                    │
-│  ▼ DISCOUNTS              [P1]       │
-│    % Discount Programs               │
-│  ▼ CUSTOMIZATION          [P1]       │
+│  ▼ PROMOTIONS             [P1]       │
+│    % Discounts                       │
+│  ▼ MOCKUPS & CUSTOMIZATION [P1]      │
 │    🖼️ Mockup Studio                  │
 │    📐 Customization Templates        │
 │  ▼ DESIGN LIBRARY         [P2]       │
 │    🎨 Designs                        │
-│    🔀 Mappings                       │
+│    🔀 Design Mappings                │
 │  ▼ ANALYTICS                         │
 │    📈 Overview                       │
 │    📊 Product Performance   [P2]     │
 │    💰 Profitability          [P2]    │
-│  ▼ CONNECTIONS                       │
-│    🏪 Shops                          │
-│    🚚 Suppliers                      │
-│  ▼ TOOLS                             │
-│    ⚖️ Compare                        │
-│    📄 Templates                      │
 ├──────────────────────────────────────┤
 │  👤 User Name                        │
 │     user@email.com                   │
-│  [Profile] [Log out]                 │
-│  💳 Subscription & Billing           │
+│  [Profile] [Billing] [Log out]       │
 └──────────────────────────────────────┘
 ```
 

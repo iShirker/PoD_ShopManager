@@ -27,7 +27,7 @@ export default function Listings() {
   const pagination = data?.data?.pagination
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="listings-page">
       <div>
         <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Listings</h1>
         <p className="text-muted mt-1 body-text">Etsy &amp; Shopify listings across your shops</p>

@@ -29,7 +29,7 @@ export default function Pricing() {
   const margin = fees.margin_percent ?? 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="pricing-page">
       <div>
         <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>Profitability Calculator</h1>
         <p className="text-muted mt-1 body-text">Estimate fees and net profit by platform</p>

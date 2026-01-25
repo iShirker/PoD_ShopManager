@@ -32,6 +32,7 @@ import TemplateDetail from './pages/TemplateDetail'
 import AuthCallback from './pages/AuthCallback'
 import SupplierCallback from './pages/SupplierCallback'
 import ShopCallback from './pages/ShopCallback'
+import Version from './pages/Version'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -44,6 +45,7 @@ function App() {
       {/* Public routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/version" element={<Version />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/auth/error" element={<AuthCallback />} />
       <Route path="/suppliers/callback" element={<SupplierCallback />} />

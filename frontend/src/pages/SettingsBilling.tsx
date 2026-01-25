@@ -31,27 +31,24 @@ const LIMIT_GROUPS: { label: string; keys: string[] }[] = [
   { label: 'Stores', keys: ['stores'] },
   { label: 'Products', keys: ['products'] },
   { label: 'Listings', keys: ['listings'] },
-  { label: 'Orders', keys: ['orders_monthly', 'orders_total'] },
-  { label: 'Mockups', keys: ['mockups_monthly', 'mockups_total'] },
-  { label: 'Storage (MB)', keys: ['storage_mb'] },
-  { label: 'SEO suggestions', keys: ['seo_suggestions_monthly', 'seo_suggestions'] },
+  { label: 'Orders', keys: ['orders', 'orders_total'] },
+  { label: 'Mockups', keys: ['mockups', 'mockups_total'] },
+  { label: 'SEO suggestions', keys: ['seo_suggestions', 'seo_suggestions'] },
   { label: 'Discount programs', keys: ['discount_programs'] },
   { label: 'Discount products', keys: ['discount_products'] },
+  { label: 'Storage (MB)', keys: ['storage_mb'] },
 ]
 
 const USAGE_KEY_MAP: Record<string, string> = {
   stores: 'stores_connected',
   products: 'products_count',
   listings: 'listings_count',
-  orders_monthly: 'orders_processed',
-  orders_total: 'orders_processed',
-  mockups_monthly: 'mockups_generated',
-  mockups_total: 'mockups_generated',
-  storage_mb: 'storage_bytes',
-  seo_suggestions_monthly: 'seo_suggestions_used',
+  orders: 'orders_processed',
+  mockups: 'mockups_generated',
   seo_suggestions: 'seo_suggestions_used',
   discount_programs: 'discount_programs',
   discount_products: 'discount_products',
+  storage_mb: 'storage_bytes',
 }
 
 const FEATURE_META: Record<
@@ -264,7 +261,7 @@ export default function SettingsBilling() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-testid="billing-page">
       <div>
         <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>
           Subscription & Billing

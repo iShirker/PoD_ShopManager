@@ -69,10 +69,10 @@ export default function Dashboard() {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="dashboard">
       {/* Welcome header */}
       <div>
-        <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>
+        <h1 className="page-title" style={{ color: 'var(--t-main-text)' }} data-testid="dashboard-title">
           Welcome back, {user.first_name || user.username || 'User'}!
         </h1>
         <p className="text-muted mt-1 body-text">
@@ -81,7 +81,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="dashboard-kpis">
         <div className="card card-body">
           <div className="flex items-center justify-between">
             <div>
@@ -291,6 +291,7 @@ export default function Dashboard() {
             <Link
               to="/comparison"
               className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
+              data-testid="dashboard-quick-compare"
             >
               <GitCompare className="w-8 h-8 text-primary-600" />
               <h3 className="mt-2 font-medium text-gray-900">Compare Prices</h3>
@@ -302,6 +303,7 @@ export default function Dashboard() {
             <Link
               to="/products"
               className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
+              data-testid="dashboard-quick-products"
             >
               <Package className="w-8 h-8 text-primary-600" />
               <h3 className="mt-2 font-medium text-gray-900">View Products</h3>
@@ -313,6 +315,7 @@ export default function Dashboard() {
             <Link
               to="/templates"
               className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-colors"
+              data-testid="dashboard-quick-templates"
             >
               <Store className="w-8 h-8 text-primary-600" />
               <h3 className="mt-2 font-medium text-gray-900">Create Template</h3>

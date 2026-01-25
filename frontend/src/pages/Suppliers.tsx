@@ -154,7 +154,7 @@ export default function Suppliers() {
   const hasConnections = connections.length > 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="suppliers-page">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="page-title" style={{ color: 'var(--t-main-text)' }}>POD Suppliers</h1>

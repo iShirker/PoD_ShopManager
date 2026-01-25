@@ -109,10 +109,16 @@ def create_app(config_name='default'):
         response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response, 401
 
-    # Health check endpoint
+    # Health check endpoint (for deployment verification)
     @app.route('/api/health')
     def health_check():
-        return {'status': 'healthy', 'message': 'POD Manager API is running'}
+        import os
+        version = os.environ.get('DEPLOY_VERSION', 'dev')
+        return {
+            'status': 'healthy',
+            'message': 'POD Manager API is running',
+            'version': version,
+        }
 
     # Run startup migrations and create database tables
     with app.app_context():

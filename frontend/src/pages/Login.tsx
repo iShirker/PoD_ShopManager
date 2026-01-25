@@ -57,7 +57,7 @@ export default function Login() {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold app-logo">POD Manager</h1>
-          <h2 className="mt-6 page-title text-[1.5rem]" style={{ color: 'var(--t-main-text)' }}>
+          <h2 className="mt-6 page-title text-[1.5rem]" style={{ color: 'var(--t-main-text)' }} data-testid="login-title">
             Sign in to your account
           </h2>
           <p className="mt-2 text-sm text-muted">
@@ -65,6 +65,7 @@ export default function Login() {
             <Link
               to="/register"
               className="font-medium text-primary-600 hover:text-primary-500"
+              data-testid="login-register-link"
             >
               create a new account
             </Link>
@@ -95,7 +96,7 @@ export default function Login() {
             </div>
 
             {/* Email/Password form */}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" data-testid="login-form">
               <div>
                 <label htmlFor="email" className="label">
                   Email address
@@ -103,6 +104,7 @@ export default function Login() {
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
+                    data-testid="login-email"
                     {...register('email', {
                       required: 'Email is required',
                       pattern: {
@@ -127,6 +129,7 @@ export default function Login() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
+                    data-testid="login-password"
                     {...register('password', {
                       required: 'Password is required',
                     })}
@@ -144,6 +147,7 @@ export default function Login() {
                 type="submit"
                 disabled={loginMutation.isPending}
                 className="w-full btn-primary"
+                data-testid="login-submit"
               >
                 <LogIn className="w-5 h-5 mr-2" />
                 {loginMutation.isPending ? 'Signing in...' : 'Sign in'}

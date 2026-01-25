@@ -51,16 +51,25 @@ const navSections: NavSection[] = [
     items: [{ name: 'Dashboard', href: '/', icon: LayoutDashboard }],
   },
   {
+    title: 'CONNECTIONS',
+    items: [
+      { name: 'Shops', href: '/shops', icon: Store },
+      { name: 'Suppliers', href: '/suppliers', icon: Truck },
+    ],
+  },
+  {
     title: 'PRODUCTS',
     items: [
       { name: 'My Products', href: '/products', icon: Package },
       { name: 'Catalog', href: '/products/catalog', icon: PackagePlus },
+      { name: 'Compare & Switch', href: '/comparison', icon: GitCompare },
     ],
   },
   {
     title: 'LISTINGS',
     items: [
       { name: 'Listings', href: '/listings', icon: List },
+      { name: 'Templates', href: '/templates', icon: FileText },
       { name: 'Bulk Create', href: '/listings/bulk', icon: Layers, badge: 'P1' },
       { name: 'SEO Assistant', href: '/listings/seo', icon: Search, badge: 'P1' },
     ],
@@ -80,11 +89,11 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    title: 'DISCOUNTS',
-    items: [{ name: 'Discount Programs', href: '/discounts', icon: Percent, badge: 'P1' }],
+    title: 'PROMOTIONS',
+    items: [{ name: 'Discounts', href: '/discounts', icon: Percent, badge: 'P1' }],
   },
   {
-    title: 'CUSTOMIZATION & MOCKUPS',
+    title: 'MOCKUPS & CUSTOMIZATION',
     items: [
       { name: 'Mockup Studio', href: '/mockups', icon: Image, badge: 'P1' },
       { name: 'Customization Templates', href: '/mockups/templates', icon: LayoutTemplate, badge: 'P1' },
@@ -94,7 +103,7 @@ const navSections: NavSection[] = [
     title: 'DESIGN LIBRARY',
     items: [
       { name: 'Designs', href: '/designs', icon: Palette, badge: 'P2' },
-      { name: 'Product–Design Mappings', href: '/designs/mappings', icon: GitBranch, badge: 'P2' },
+      { name: 'Design Mappings', href: '/designs/mappings', icon: GitBranch, badge: 'P2' },
     ],
   },
   {
@@ -103,20 +112,6 @@ const navSections: NavSection[] = [
       { name: 'Overview', href: '/analytics', icon: BarChart2 },
       { name: 'Product Performance', href: '/analytics/products', icon: TrendingUp, badge: 'P2' },
       { name: 'Profitability Reports', href: '/analytics/profitability', icon: DollarSign, badge: 'P2' },
-    ],
-  },
-  {
-    title: 'CONNECTIONS',
-    items: [
-      { name: 'Shops', href: '/shops', icon: Store },
-      { name: 'Suppliers', href: '/suppliers', icon: Truck },
-    ],
-  },
-  {
-    title: 'TOOLS',
-    items: [
-      { name: 'Compare Products', href: '/comparison', icon: GitCompare },
-      { name: 'Templates', href: '/templates', icon: FileText },
     ],
   },
 ]

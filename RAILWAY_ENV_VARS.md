@@ -38,6 +38,10 @@ This document lists all environment variables that should be configured in Railw
 ### Shopify API
 - **SHOPIFY_API_KEY** - Shopify API Key
 - **SHOPIFY_API_SECRET** - Shopify API Secret
+- **SHOPIFY_REDIRECT_URI** - (Optional) Shopify OAuth redirect URI override
+  - Example (frontend callback): `https://podshopmanagerfrontend-production.up.railway.app/shops/callback`
+  - Example (backend callback): `{BACKEND_URL}/api/auth/shopify/callback`
+  - **Important**: Shopify will return `400 Bad Request` if the `redirect_uri` is not whitelisted in the Shopify Dev Dashboard, and some configurations require the `redirect_uri` host to match the App URL host.
 
 ### Gelato API (Optional - for OAuth)
 - **GELATO_CLIENT_ID** - Gelato OAuth Client ID

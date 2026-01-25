@@ -17,12 +17,26 @@ export default function ShopCallback() {
       const error = searchParams.get('error')
       const shop = searchParams.get('shop')
       const shopId = searchParams.get('shop_id')
+      const code = searchParams.get('code')
+      const state = searchParams.get('state')
 
       if (error) {
         setStatus('error')
         setMessage(`Failed to connect shop: ${error}`)
         toast.error(`Failed to connect shop: ${error}`)
         setTimeout(() => navigate('/shops'), 3000)
+        return
+      }
+
+      // If Shopify redirects to the frontend directly (redirect_uri = FRONTEND_URL/shops/callback),
+      // we’ll receive `code`/`shop`/`state` here. Forward the full query to the backend callback
+      // to complete token exchange securely (client_secret stays server-side).
+      if (!success && code && shop && state) {
+        setStatus('loading')
+        setMessage('Finishing Shopify authorization...')
+        const apiBase = import.meta.env.VITE_API_URL || '/api'
+        const qs = searchParams.toString()
+        window.location.href = `${apiBase}/auth/shopify/callback?${qs}`
         return
       }
 

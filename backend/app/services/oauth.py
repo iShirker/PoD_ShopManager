@@ -160,10 +160,17 @@ def get_shopify_auth_url(shop_domain, state):
         'write_merchant_managed_fulfillment_orders'
     ])
 
+    # Shopify can reject OAuth with 400 if redirect_uri isn't whitelisted or doesn't match
+    # required host constraints in the app configuration. Prefer an explicit config override,
+    # otherwise default to the backend callback (legacy flow).
+    redirect_uri = current_app.config.get('SHOPIFY_REDIRECT_URI')
+    if not redirect_uri:
+        redirect_uri = f"{current_app.config.get('BACKEND_URL', 'http://localhost:5000')}/api/auth/shopify/callback"
+
     params = {
         'client_id': current_app.config['SHOPIFY_API_KEY'],
         'scope': scopes,
-        'redirect_uri': f"{current_app.config.get('BACKEND_URL', 'http://localhost:5000')}/api/auth/shopify/callback",
+        'redirect_uri': redirect_uri,
         'state': state
     }
     return f"https://{shop_domain}/admin/oauth/authorize?{urlencode(params)}"

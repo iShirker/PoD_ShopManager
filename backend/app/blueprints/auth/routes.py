@@ -3,6 +3,8 @@ Authentication routes.
 Handles registration, login, OAuth callbacks, and token refresh.
 """
 import secrets
+import hashlib
+import hmac
 from datetime import datetime, timedelta
 from flask import request, jsonify, current_app, redirect, url_for
 from flask_jwt_extended import (
@@ -23,6 +25,36 @@ from app.services.oauth import (
 from app.models import SupplierConnection, Shop
 from app.services.suppliers.gelato import GelatoService
 from app.services.shops.shopify import get_shopify_shop_info
+
+
+def _verify_shopify_hmac(query_args, secret: str) -> bool:
+    """
+    Verify Shopify OAuth callback HMAC signature.
+    Shopify signs the query string with HMAC-SHA256 using the app client secret.
+    """
+    provided_hmac = query_args.get('hmac')
+    if not provided_hmac or not secret:
+        return False
+
+    # Build the message from all params except hmac, sorted alphabetically.
+    # Use the same encoding rules Shopify expects (URL-encoded key/value pairs).
+    from urllib.parse import urlencode
+
+    items = []
+    for key in query_args.keys():
+        if key == 'hmac':
+            continue
+        # Flask args can be multi-valued; Shopify params are single-valued here,
+        # but preserve multi-values defensively.
+        values = query_args.getlist(key)
+        for v in values:
+            items.append((key, v))
+
+    items.sort(key=lambda kv: kv[0])
+    message = urlencode(items)
+
+    digest = hmac.new(secret.encode('utf-8'), message.encode('utf-8'), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(digest, str(provided_hmac))
 
 
 @auth_bp.route('/register', methods=['POST'])
@@ -332,6 +364,11 @@ def shopify_callback():
         return redirect(f"{current_app.config['FRONTEND_URL']}/auth/error?error=missing_params")
 
     try:
+        # Verify OAuth callback authenticity.
+        if not _verify_shopify_hmac(request.args, current_app.config.get('SHOPIFY_API_SECRET', '')):
+            current_app.logger.warning("Shopify OAuth callback failed HMAC verification")
+            return redirect(f"{current_app.config['FRONTEND_URL']}/auth/error?error=invalid_hmac")
+
         # Extract user_id from state
         user_id = state.split(':')[1] if state and ':' in state else None
 

@@ -34,6 +34,10 @@ class Config:
 
     SHOPIFY_API_KEY = os.getenv('SHOPIFY_API_KEY', '')
     SHOPIFY_API_SECRET = os.getenv('SHOPIFY_API_SECRET', '')
+    # Optional override for Shopify OAuth redirect URI.
+    # Some Shopify app configurations require redirect_uri host to match the App URL host.
+    # Example: https://podshopmanagerfrontend-production.up.railway.app/shops/callback
+    SHOPIFY_REDIRECT_URI = os.getenv('SHOPIFY_REDIRECT_URI', '')
 
     # Print on Demand Suppliers
     GELATO_API_KEY = os.getenv('GELATO_API_KEY', '')

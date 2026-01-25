@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import {
@@ -32,6 +32,8 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { cn } from '../lib/utils'
+import HelpModal from './HelpModal'
+import { getHelpEntryForPath } from '../help/helpRegistry'
 
 export interface NavItem {
   name: string
@@ -134,9 +136,12 @@ function shouldNavLinkEnd(href: string) {
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  const [helpOpen, setHelpOpen] = useState(false)
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
+
+  const helpEntry = useMemo(() => getHelpEntryForPath(location.pathname), [location.pathname])
 
   const handleLogout = () => {
     logout()
@@ -251,16 +256,39 @@ export default function Layout() {
       </div>
 
       <div className="lg:pl-64">
-        <div className="sticky top-0 z-40 flex items-center h-16 px-4 card lg:hidden" style={{ borderRadius: 0, borderLeft: 'none', borderTop: 'none', borderRight: 'none' }}>
-          <button onClick={() => setSidebarOpen(true)} className="app-nav-link p-1 rounded">
+        <div
+          className="sticky top-0 z-40 flex items-center h-16 px-4 card"
+          style={{ borderRadius: 0, borderLeft: 'none', borderTop: 'none', borderRight: 'none' }}
+        >
+          <button onClick={() => setSidebarOpen(true)} className="app-nav-link p-1 rounded lg:hidden" aria-label="Open menu">
             <Menu className="w-6 h-6" />
           </button>
-          <span className="ml-4 text-lg font-semibold app-logo">POD Manager</span>
+          <span className="ml-4 text-lg font-semibold app-logo lg:hidden">POD Manager</span>
+          <div className="flex-1" />
+          {helpEntry && (
+            <button
+              type="button"
+              className="btn-secondary w-10 h-10 px-0 py-0 rounded-full font-bold"
+              onClick={() => setHelpOpen(true)}
+              aria-label={`Help: ${helpEntry.title}`}
+              title="Help"
+            >
+              H
+            </button>
+          )}
         </div>
         <main className="app-main p-6">
           <Outlet />
         </main>
       </div>
+
+      {helpEntry && (
+        <HelpModal
+          open={helpOpen}
+          onClose={() => setHelpOpen(false)}
+          help={helpEntry}
+        />
+      )}
     </div>
   )
 }

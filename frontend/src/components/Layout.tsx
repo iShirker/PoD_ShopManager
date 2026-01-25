@@ -116,6 +116,21 @@ const navSections: NavSection[] = [
   },
 ]
 
+const navItemHrefs = navSections.flatMap((s) => s.items.map((i) => i.href))
+
+/**
+ * If a nav item has a child route *also present in the menu*, we want the parent
+ * item to match EXACTLY (so it doesn't stay highlighted together with its child).
+ *
+ * Example:
+ * - /products and /products/catalog are both menu items
+ * - when on /products/catalog, only Catalog should be active (not My Products)
+ */
+function shouldNavLinkEnd(href: string) {
+  if (href === '/') return true
+  return navItemHrefs.some((h) => h !== href && h.startsWith(href + '/'))
+}
+
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
@@ -154,6 +169,7 @@ export default function Layout() {
                 <NavLink
                   key={item.name}
                   to={item.href}
+                  end={shouldNavLinkEnd(item.href)}
                   onClick={() => mobile && setSidebarOpen(false)}
                   className={({ isActive: active }) =>
                     cn(

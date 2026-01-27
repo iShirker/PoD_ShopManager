@@ -36,17 +36,17 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-async function handleTestEtsyOAuth() {
+// Minimal test with just profile_r scope - easiest to get approved
+async function handleTestEtsyMinimal() {
   try {
     const clientId = '8v2rwn0xicmwkdr4v0d7dx14'
     const redirectUri = 'https://podshopmanagerbackend-production.up.railway.app/api/auth/etsy/callback'
-    const scope = 'listings_r listings_w shops_r shops_w transactions_r'
+    const scope = 'profile_r' // Minimal scope to test OAuth
 
     const codeVerifier = generateCodeVerifier()
     const codeChallenge = await generateCodeChallenge(codeVerifier)
     const state = generateRandomString(32)
 
-    // Store for callback
     localStorage.setItem('etsy_code_verifier', codeVerifier)
     localStorage.setItem('etsy_state', state)
 
@@ -61,14 +61,48 @@ async function handleTestEtsyOAuth() {
     })
 
     const authUrl = `https://www.etsy.com/oauth/connect?${params.toString()}`
-    console.log('=== ETSY OAUTH TEST ===')
+    console.log('=== ETSY OAUTH MINIMAL TEST (profile_r only) ===')
     console.log('Auth URL:', authUrl)
     console.log('Code Verifier:', codeVerifier)
-    console.log('State:', state)
 
     window.location.href = authUrl
   } catch (error) {
-    console.error('Error generating OAuth URL:', error)
+    console.error('Error:', error)
+  }
+}
+
+// Full scope test
+async function handleTestEtsyOAuth() {
+  try {
+    const clientId = '8v2rwn0xicmwkdr4v0d7dx14'
+    const redirectUri = 'https://podshopmanagerbackend-production.up.railway.app/api/auth/etsy/callback'
+    const scope = 'listings_r listings_w shops_r shops_w transactions_r'
+
+    const codeVerifier = generateCodeVerifier()
+    const codeChallenge = await generateCodeChallenge(codeVerifier)
+    const state = generateRandomString(32)
+
+    localStorage.setItem('etsy_code_verifier', codeVerifier)
+    localStorage.setItem('etsy_state', state)
+
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: scope,
+      state: state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256'
+    })
+
+    const authUrl = `https://www.etsy.com/oauth/connect?${params.toString()}`
+    console.log('=== ETSY OAUTH TEST (full scopes) ===')
+    console.log('Auth URL:', authUrl)
+    console.log('Code Verifier:', codeVerifier)
+
+    window.location.href = authUrl
+  } catch (error) {
+    console.error('Error:', error)
   }
 }
 
@@ -122,12 +156,20 @@ export default function Shops() {
         </div>
         <div className="flex space-x-3">
           <button
-            onClick={() => handleTestEtsyOAuth()}
-            className="btn-secondary flex items-center bg-yellow-100 text-yellow-800 border-yellow-300"
-            title="Test Etsy OAuth directly from frontend"
+            onClick={() => handleTestEtsyMinimal()}
+            className="btn-secondary flex items-center bg-green-100 text-green-800 border-green-300"
+            title="Test with minimal profile_r scope"
           >
             <FlaskConical className="w-5 h-5 mr-2" />
-            Test Etsy OAuth
+            Test Minimal
+          </button>
+          <button
+            onClick={() => handleTestEtsyOAuth()}
+            className="btn-secondary flex items-center bg-yellow-100 text-yellow-800 border-yellow-300"
+            title="Test Etsy OAuth with full scopes"
+          >
+            <FlaskConical className="w-5 h-5 mr-2" />
+            Test Full
           </button>
           <button
             onClick={() => openShopLoginModal('etsy')}

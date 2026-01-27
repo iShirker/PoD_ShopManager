@@ -36,12 +36,12 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-// Minimal test with just profile_r scope - easiest to get approved
+// Minimal test - just copies URL to clipboard for manual testing
 async function handleTestEtsyMinimal() {
   try {
     const clientId = '8v2rwn0xicmwkdr4v0d7dx14'
     const redirectUri = 'https://podshopmanagerbackend-production.up.railway.app/api/auth/etsy/callback'
-    const scope = 'profile_r' // Minimal scope to test OAuth
+    const scope = 'profile_r'
 
     const codeVerifier = generateCodeVerifier()
     const codeChallenge = await generateCodeChallenge(codeVerifier)
@@ -61,17 +61,19 @@ async function handleTestEtsyMinimal() {
     })
 
     const authUrl = `https://www.etsy.com/oauth/connect?${params.toString()}`
-    console.log('=== ETSY OAUTH MINIMAL TEST (profile_r only) ===')
-    console.log('Auth URL:', authUrl)
-    console.log('Code Verifier:', codeVerifier)
 
-    window.location.href = authUrl
+    // Copy to clipboard and alert user
+    await navigator.clipboard.writeText(authUrl)
+    console.log('=== ETSY OAUTH URL (copied to clipboard) ===')
+    console.log(authUrl)
+    console.log('Code Verifier:', codeVerifier)
+    alert('OAuth URL copied to clipboard!\n\nPaste it in a NEW browser tab to test.\n\nCheck console for the code_verifier.')
   } catch (error) {
     console.error('Error:', error)
   }
 }
 
-// Full scope test
+// Full scope test - copies URL to clipboard
 async function handleTestEtsyOAuth() {
   try {
     const clientId = '8v2rwn0xicmwkdr4v0d7dx14'
@@ -96,11 +98,12 @@ async function handleTestEtsyOAuth() {
     })
 
     const authUrl = `https://www.etsy.com/oauth/connect?${params.toString()}`
-    console.log('=== ETSY OAUTH TEST (full scopes) ===')
-    console.log('Auth URL:', authUrl)
-    console.log('Code Verifier:', codeVerifier)
 
-    window.location.href = authUrl
+    await navigator.clipboard.writeText(authUrl)
+    console.log('=== ETSY OAUTH URL (copied to clipboard) ===')
+    console.log(authUrl)
+    console.log('Code Verifier:', codeVerifier)
+    alert('OAuth URL copied to clipboard!\n\nPaste it in a NEW browser tab to test.\n\nCheck console for the code_verifier.')
   } catch (error) {
     console.error('Error:', error)
   }

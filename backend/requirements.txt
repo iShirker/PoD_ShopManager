@@ -1,5 +1,6 @@
 # Database (PostgreSQL driver MUST be first)
-psycopg2-binary==2.9.9
+# 2.9.9 has no wheels for Python 3.13 on Windows (pip falls back to source build requiring pg_config).
+psycopg2-binary==2.9.11
 SQLAlchemy==2.0.36
 
 # Flask and extensions

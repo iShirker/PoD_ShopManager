@@ -6,10 +6,71 @@ import { shopsApi } from '../lib/api'
 import { formatDateTime, getShopTypeColor } from '../lib/utils'
 import { cn } from '../lib/utils'
 import {
-  Store, RefreshCw, Trash2, ExternalLink, Loader2, Package
+  Store, RefreshCw, Trash2, ExternalLink, Loader2, Package, FlaskConical
 } from 'lucide-react'
 import { EtsySimpleIcon, ShopifySimpleIcon } from '../components/BrandIcons'
 import ShopLoginModal from '../components/ShopLoginModal'
+
+// Helper functions for PKCE
+function generateRandomString(length: number): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'
+  let result = ''
+  const randomValues = new Uint8Array(length)
+  crypto.getRandomValues(randomValues)
+  for (let i = 0; i < length; i++) {
+    result += chars[randomValues[i] % chars.length]
+  }
+  return result
+}
+
+function generateCodeVerifier(): string {
+  return generateRandomString(64)
+}
+
+async function generateCodeChallenge(verifier: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(verifier)
+  const digest = await crypto.subtle.digest('SHA-256', data)
+  const base64 = btoa(String.fromCharCode(...new Uint8Array(digest)))
+  // Convert to base64url
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+async function handleTestEtsyOAuth() {
+  try {
+    const clientId = '8v2rwn0xicmwkdr4v0d7dx14'
+    const redirectUri = 'https://podshopmanagerbackend-production.up.railway.app/api/auth/etsy/callback'
+    const scope = 'listings_r listings_w shops_r shops_w transactions_r'
+
+    const codeVerifier = generateCodeVerifier()
+    const codeChallenge = await generateCodeChallenge(codeVerifier)
+    const state = generateRandomString(32)
+
+    // Store for callback
+    localStorage.setItem('etsy_code_verifier', codeVerifier)
+    localStorage.setItem('etsy_state', state)
+
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: scope,
+      state: state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256'
+    })
+
+    const authUrl = `https://www.etsy.com/oauth/connect?${params.toString()}`
+    console.log('=== ETSY OAUTH TEST ===')
+    console.log('Auth URL:', authUrl)
+    console.log('Code Verifier:', codeVerifier)
+    console.log('State:', state)
+
+    window.location.href = authUrl
+  } catch (error) {
+    console.error('Error generating OAuth URL:', error)
+  }
+}
 
 export default function Shops() {
   const queryClient = useQueryClient()
@@ -60,6 +121,14 @@ export default function Shops() {
           </p>
         </div>
         <div className="flex space-x-3">
+          <button
+            onClick={() => handleTestEtsyOAuth()}
+            className="btn-secondary flex items-center bg-yellow-100 text-yellow-800 border-yellow-300"
+            title="Test Etsy OAuth directly from frontend"
+          >
+            <FlaskConical className="w-5 h-5 mr-2" />
+            Test Etsy OAuth
+          </button>
           <button
             onClick={() => openShopLoginModal('etsy')}
             className="btn-secondary flex items-center"

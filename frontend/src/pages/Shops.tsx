@@ -36,77 +36,66 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-// Minimal test - just copies URL to clipboard for manual testing
+// Minimal test - direct navigation to Etsy OAuth
 async function handleTestEtsyMinimal() {
-  try {
-    const clientId = '8v2rwn0xicmwkdr4v0d7dx14'
-    const redirectUri = 'https://podshopmanagerbackend-production.up.railway.app/api/auth/etsy/callback'
-    const scope = 'profile_r'
+  const clientId = '8v2rwn0xicmwkdr4v0d7dx14'
+  const redirectUri = 'https://podshopmanagerbackend-production.up.railway.app/api/auth/etsy/callback'
+  const scope = 'profile_r'
 
-    const codeVerifier = generateCodeVerifier()
-    const codeChallenge = await generateCodeChallenge(codeVerifier)
-    const state = generateRandomString(32)
+  const codeVerifier = generateCodeVerifier()
+  const codeChallenge = await generateCodeChallenge(codeVerifier)
+  const state = generateRandomString(32)
 
-    localStorage.setItem('etsy_code_verifier', codeVerifier)
-    localStorage.setItem('etsy_state', state)
+  localStorage.setItem('etsy_code_verifier', codeVerifier)
+  localStorage.setItem('etsy_state', state)
 
-    const params = new URLSearchParams({
-      response_type: 'code',
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      scope: scope,
-      state: state,
-      code_challenge: codeChallenge,
-      code_challenge_method: 'S256'
-    })
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    scope: scope,
+    state: state,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256'
+  })
 
-    const authUrl = `https://www.etsy.com/oauth/connect?${params.toString()}`
+  const authUrl = `https://www.etsy.com/oauth/connect?${params.toString()}`
+  console.log('Navigating to:', authUrl)
+  console.log('Code Verifier:', codeVerifier)
 
-    // Copy to clipboard and alert user
-    await navigator.clipboard.writeText(authUrl)
-    console.log('=== ETSY OAUTH URL (copied to clipboard) ===')
-    console.log(authUrl)
-    console.log('Code Verifier:', codeVerifier)
-    alert('OAuth URL copied to clipboard!\n\nPaste it in a NEW browser tab to test.\n\nCheck console for the code_verifier.')
-  } catch (error) {
-    console.error('Error:', error)
-  }
+  // Use window.location.assign for true top-level navigation
+  window.location.assign(authUrl)
 }
 
-// Full scope test - copies URL to clipboard
+// Full scope test - direct navigation to Etsy OAuth
 async function handleTestEtsyOAuth() {
-  try {
-    const clientId = '8v2rwn0xicmwkdr4v0d7dx14'
-    const redirectUri = 'https://podshopmanagerbackend-production.up.railway.app/api/auth/etsy/callback'
-    const scope = 'listings_r listings_w shops_r shops_w transactions_r'
+  const clientId = '8v2rwn0xicmwkdr4v0d7dx14'
+  const redirectUri = 'https://podshopmanagerbackend-production.up.railway.app/api/auth/etsy/callback'
+  const scope = 'listings_r listings_w shops_r shops_w transactions_r'
 
-    const codeVerifier = generateCodeVerifier()
-    const codeChallenge = await generateCodeChallenge(codeVerifier)
-    const state = generateRandomString(32)
+  const codeVerifier = generateCodeVerifier()
+  const codeChallenge = await generateCodeChallenge(codeVerifier)
+  const state = generateRandomString(32)
 
-    localStorage.setItem('etsy_code_verifier', codeVerifier)
-    localStorage.setItem('etsy_state', state)
+  localStorage.setItem('etsy_code_verifier', codeVerifier)
+  localStorage.setItem('etsy_state', state)
 
-    const params = new URLSearchParams({
-      response_type: 'code',
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      scope: scope,
-      state: state,
-      code_challenge: codeChallenge,
-      code_challenge_method: 'S256'
-    })
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    scope: scope,
+    state: state,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256'
+  })
 
-    const authUrl = `https://www.etsy.com/oauth/connect?${params.toString()}`
+  const authUrl = `https://www.etsy.com/oauth/connect?${params.toString()}`
+  console.log('Navigating to:', authUrl)
+  console.log('Code Verifier:', codeVerifier)
 
-    await navigator.clipboard.writeText(authUrl)
-    console.log('=== ETSY OAUTH URL (copied to clipboard) ===')
-    console.log(authUrl)
-    console.log('Code Verifier:', codeVerifier)
-    alert('OAuth URL copied to clipboard!\n\nPaste it in a NEW browser tab to test.\n\nCheck console for the code_verifier.')
-  } catch (error) {
-    console.error('Error:', error)
-  }
+  // Use window.location.assign for true top-level navigation
+  window.location.assign(authUrl)
 }
 
 export default function Shops() {

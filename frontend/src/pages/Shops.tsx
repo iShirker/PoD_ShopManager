@@ -38,7 +38,7 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
 
 // Minimal test - direct navigation to Etsy OAuth
 async function handleTestEtsyMinimal() {
-  const clientId = '8v2rwn0xicmwkdr4v0d7dx14'
+  const clientId = '3q5rezrwx21thgz4tg1sfw5u'
   const redirectUri = 'https://podshopmanagerbackend-production.up.railway.app/api/auth/etsy/callback'
   const scope = 'profile_r'
 
@@ -69,7 +69,7 @@ async function handleTestEtsyMinimal() {
 
 // Full scope test - direct navigation to Etsy OAuth
 async function handleTestEtsyOAuth() {
-  const clientId = '8v2rwn0xicmwkdr4v0d7dx14'
+  const clientId = '3q5rezrwx21thgz4tg1sfw5u'
   const redirectUri = 'https://podshopmanagerbackend-production.up.railway.app/api/auth/etsy/callback'
   const scope = 'listings_r listings_w shops_r shops_w transactions_r'
 
